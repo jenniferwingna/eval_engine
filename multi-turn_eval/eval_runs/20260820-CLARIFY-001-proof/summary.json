@@ -1,0 +1,10 @@
+{
+  "total": 1,
+  "passed": 0,
+  "failed": 1,
+  "needs_manual": 0,
+  "errored": 0,
+  "ws_url": "ws://127.0.0.1:8861/ws",
+  "literal_mode": false,
+  "output_dir": "/private/tmp/eval_real_test2"
+}

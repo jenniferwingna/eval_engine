@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>多轮评测集 · 温和审核台</title>
+  <style>
+    :root {
+      --ink:#314052; --muted:#718096; --paper:#fffdf9; --cream:#f8f3ea;
+      --line:#e8e1d8; --blue:#dcecf3; --blue-strong:#4e8fa8;
+      --lav:#eee8f7; --lav-strong:#8065a6; --peach:#fce9dd; --peach-strong:#bd7048;
+      --mint:#e1f1e9; --mint-strong:#4d9170; --yellow:#fff2c8; --yellow-strong:#a17721;
+      --rose:#f8e1e5; --rose-strong:#b85d6b; --shadow:0 12px 30px rgba(79,70,61,.08);
+    }
+    *{box-sizing:border-box} body{margin:0;color:var(--ink);background:linear-gradient(135deg,#fbf8f1,#eef5f5);font:14px/1.65 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+    button,input,select,textarea{font:inherit;color:inherit} button{cursor:pointer;border:0}
+    .app{max-width:1500px;margin:auto;padding:24px}.top{display:flex;gap:18px;align-items:flex-start;justify-content:space-between}
+    h1{margin:0 0 4px;font-size:27px;letter-spacing:.02em}.sub{color:var(--muted)}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}.btn{padding:9px 14px;border-radius:12px;background:white;border:1px solid var(--line);box-shadow:0 3px 10px #6d665b12}.btn.primary{background:var(--blue);color:#32677b;border-color:#c8e1e9}.btn:hover{filter:brightness(.98);transform:translateY(-1px)}
+    .dashboard{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:22px 0}.stat{background:rgba(255,253,249,.86);border:1px solid var(--line);border-radius:16px;padding:13px 16px;box-shadow:var(--shadow)}.stat b{display:block;font-size:24px}.stat span{color:var(--muted)}
+    .layout{display:grid;grid-template-columns:270px 1fr;gap:18px}.panel,.card{background:rgba(255,253,249,.94);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
+    .filters{padding:16px;position:sticky;top:16px;height:max-content}.filters h3{margin:0 0 12px}.field{margin:12px 0}.field label{display:block;color:var(--muted);font-size:12px;margin-bottom:5px}select,input[type=text]{width:100%;padding:9px 10px;background:#fff;border:1px solid var(--line);border-radius:10px;outline:none}select:focus,input:focus,textarea:focus{border-color:#9cc8d5;box-shadow:0 0 0 3px #dcecf366}
+    .check{display:flex;align-items:center;gap:8px;margin:8px 0}.check input{accent-color:var(--blue-strong)}
+    .main{min-width:0}.empty{padding:50px;text-align:center;color:var(--muted)}.case-head{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:17px 20px;border-bottom:1px solid var(--line)}.case-id{font-size:18px;font-weight:700}.badges{display:flex;gap:6px;flex-wrap:wrap}.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;font-size:12px;font-weight:650}.b-p0{background:var(--peach);color:var(--peach-strong)}.b-p1{background:var(--yellow);color:var(--yellow-strong)}.b-neg{background:var(--rose);color:var(--rose-strong)}.b-key{background:var(--lav);color:var(--lav-strong)}.b-ok{background:var(--mint);color:var(--mint-strong)}.b-pend{background:#edf0f2;color:#718096}
+    .case-body{padding:18px 20px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.block{background:#fff;border:1px solid var(--line);border-radius:13px;padding:12px}.block.important{border-left:4px solid var(--peach-strong);background:#fffaf4}.block h4{margin:0 0 6px;font-size:12px;color:var(--muted);font-weight:650}.value{white-space:pre-wrap;overflow-wrap:anywhere}.value strong{color:var(--peach-strong)}
+    .wide{grid-column:1/-1}.json{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;background:#faf8f4;padding:9px;border-radius:9px;max-height:190px;overflow:auto;white-space:pre-wrap}
+    .review{margin-top:16px;background:#f2f7f5;border:1px solid #d8e9e0;border-radius:15px;padding:15px}.review h3{margin:0 0 9px;color:#477963}.review-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px 20px}.review label{display:flex;gap:8px;align-items:flex-start}.review input{margin-top:5px;accent-color:var(--mint-strong)}textarea{width:100%;min-height:66px;margin-top:10px;border:1px solid #d8e9e0;border-radius:10px;padding:9px;background:#fff;resize:vertical}
+    .nav{display:flex;justify-content:space-between;gap:10px;margin-top:14px}.nav .btn{min-width:100px}.shortcut{color:var(--muted);font-size:12px;text-align:center;margin-top:8px}
+    .toast{position:fixed;right:24px;bottom:24px;background:#466c72;color:#fff;padding:10px 15px;border-radius:12px;opacity:0;transform:translateY(10px);transition:.2s;pointer-events:none}.toast.show{opacity:1;transform:none}
+    .guide{margin:18px 0 0;padding:14px 17px;background:#f2f7f5;border:1px solid #d8e9e0;border-radius:15px;color:#477963}.guide b{color:#315f51}.guide small{display:block;color:var(--muted);margin-top:3px}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}.filters{position:static}.dashboard{grid-template-columns:repeat(3,1fr)}}@media(max-width:600px){.app{padding:14px}.top{display:block}.actions{justify-content:flex-start;margin-top:12px}.dashboard{grid-template-columns:repeat(2,1fr)}.grid,.review-grid{grid-template-columns:1fr}.wide{grid-column:auto}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div><h1>多轮评测集 · 温和审核台</h1><div class="sub">把关键审核点放在最前面，逐条确认，结果自动保存在当前浏览器。</div></div>
+    <div class="actions"><label class="btn primary">选择推荐 JSON <input id="file" type="file" accept=".json" hidden></label><button class="btn" id="export">导出审核记录</button><button class="btn" id="clear">清空本地记录</button></div>
+  </header>
+  <section class="dashboard">
+    <div class="stat"><b id="total">—</b><span>当前用例</span></div><div class="stat"><b id="done">0</b><span>已完成审核</span></div><div class="stat"><b id="p0">0</b><span>🔶 P0 关键</span></div><div class="stat"><b id="negative">0</b><span>🌸 负例</span></div><div class="stat"><b id="dimension">—</b><span>维度数量</span></div>
+  </section>
+  <div class="layout">
+    <aside class="panel filters">
+      <h3>筛选与定位</h3>
+      <div class="field"><label>搜索 case_id / 场景 / 用户话术</label><input id="search" type="text" placeholder="输入关键词…"></div>
+      <div class="field"><label>维度</label><select id="dim"><option value="">全部维度</option></select></div>
+      <div class="field"><label>审核状态</label><select id="status"><option value="">全部</option><option value="pending">待审核</option><option value="pass">通过</option><option value="fail">需修改</option></select></div>
+      <div class="field"><label>优先级</label><select id="priority"><option value="">全部</option><option>P0</option><option>P1</option></select></div>
+      <div class="field"><label>审核批次（按脚本长度/判分复杂度分）</label><select id="tier"><option value="">全部批次</option><option value="1">批次1 · 最快（脚本短，判分点单一）</option><option value="2">批次2 · 中等</option><option value="3">批次3 · 较慢（脚本长/负例多）</option><option value="4">批次4 · 需人工抽检（不建议批量）</option></select></div>
+      <label class="check"><input id="onlyKey" type="checkbox">只看关键审核点</label>
+      <label class="check"><input id="onlyUnreviewed" type="checkbox">只看未审核</label>
+      <div class="shortcut">← / → 切换用例　Ctrl+S 保存</div>
+    </aside>
+    <main class="main">
+      <div class="guide"><b>应该选择哪个文件？</b>　请选择上一级 <b>dataset/</b> 目录中的 <b>multiturn_eval_set_approved.json</b>（最终审核版，850 条）。<small>不要选择 draft_*.json、review_*.json 或 *_merge_manifest.json：它们是生成/复核过程文件，不是最终审核入口。选错文件时页面会提醒你。</small></div>
+      <div id="content" class="card empty">请点击右上角的 <b>选择推荐 JSON</b>，然后选择<br><b>multiturn_eval_set_approved.json</b>。<br>也可以把这个文件拖到此页面。</div>
+    </main>
+  </div>
+</div><div id="toast" class="toast"></div>
+<script>
+  const $=s=>document.querySelector(s), state={all:[],filtered:[],index:0,records:JSON.parse(localStorage.getItem('multiturn-audit-records')||'{}')};
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const flat=d=>Array.isArray(d)?d.flatMap(flat):d&&typeof d==='object'?Object.values(d).flatMap(flat):[String(d??'')];
+  const text=x=>typeof x==='string'?x:JSON.stringify(x,null,2);
+  function allItems(json){return json.dimensions?json.dimensions.flatMap(x=>x.items||[]):json.items||[]}
+  function toast(s){let t=$('#toast');t.textContent=s;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1600)}
+  function save(){localStorage.setItem('multiturn-audit-records',JSON.stringify(state.records));renderStats()}
+  function isKey(x){return x['优先级']==='P0'||x['正/负例']==='负例'}
+  const TIER={NOFUNC:1,CLARIFY:1,HALFLIFE:1,IMPLICIT:1,COREF:1,ISOLATE:2,TOOLFAIL:2,STATECONS:2,REVISE:2,INSTKEEP:2,TOPIC:2,VERSION:3,RESUME:3,INFERMEM:3,FALSEMEM:3,MIDPOINT:3,SELFCON:4};
+  const TIER_LABEL={1:'批次1·最快',2:'批次2·中等',3:'批次3·较慢',4:'批次4·人工抽检'};
+  function tierOf(x){let prefix=String(x.case_id||'').split('-')[0];return TIER[prefix]||0}
+  function renderStats(){let a=state.all, d=a.filter(x=>state.records[x.case_id]?.status==='pass').length, dims=new Set(a.map(x=>x['维度'])).size;$('#total').textContent=a.length;$('#done').textContent=d;$('#p0').textContent=a.filter(x=>x['优先级']==='P0').length;$('#negative').textContent=a.filter(x=>x['正/负例']==='负例').length;$('#dimension').textContent=dims}
+  function populate(){let dims=[...new Set(state.all.map(x=>x['维度']).filter(Boolean))];$('#dim').innerHTML='<option value="">全部维度</option>'+dims.map(x=>`<option>${esc(x)}</option>`).join('');renderStats();apply()}
+  function apply(){let q=$('#search').value.trim().toLowerCase(), dim=$('#dim').value, st=$('#status').value, pr=$('#priority').value, tier=$('#tier').value;
+    state.filtered=state.all.filter(x=>{let r=state.records[x.case_id]||{}, hay=flat(x).join(' ').toLowerCase();return(!q||hay.includes(q))&&(!dim||x['维度']===dim)&&(!pr||x['优先级']===pr)&&(!tier||String(tierOf(x))===tier)&&(!st||(r.status||'pending')===st)&&(!$('#onlyKey').checked||isKey(x))&&(!$('#onlyUnreviewed').checked||!r.status)});
+    state.index=Math.min(state.index,Math.max(0,state.filtered.length-1));renderCase()}
+  function block(label,val,important=false,wide=false){if(val===undefined||val===null||val==='')return '';let v=typeof val==='object'?`<div class="json">${esc(text(val))}</div>`:`<div class="value">${esc(val)}</div>`;return `<section class="block ${important?'important':''} ${wide?'wide':''}"><h4>${important?'◆ ':''}${esc(label)}</h4>${v}</section>`}
+  function renderCase(){let x=state.filtered[state.index];if(!x){$('#content').className='card empty';$('#content').innerHTML=state.all.length?'没有符合筛选条件的用例。':'请先选择 JSON 文件。';return}let r=state.records[x.case_id]||{}, key=isKey(x);
+    $('#content').className='card';$('#content').innerHTML=`<div class="case-head"><div><div class="case-id">${esc(x.case_id)}</div><div class="sub">${esc(x['维度']||'')} · ${TIER_LABEL[tierOf(x)]||'未分批'} · ${state.index+1} / ${state.filtered.length}</div></div><div class="badges">${x['优先级']==='P0'?'<span class="badge b-p0">🔶 P0 关键</span>':''}${x['优先级']==='P1'?'<span class="badge b-p1">◆ P1</span>':''}${x['正/负例']==='负例'?'<span class="badge b-neg">🌸 负例</span>':''}${x['检查轮次']!==undefined?'<span class="badge b-key">⌁ 检查轮次 '+esc(x['检查轮次'])+'</span>':''}${x['禁止动作']?'<span class="badge b-key">⚑ 有禁止动作</span>':''}${r.status?`<span class="badge ${r.status==='pass'?'b-ok':'b-neg'}">${r.status==='pass'?'✓ 已通过':'! 需修改'}</span>`:'<span class="badge b-pend">○ 待审核</span>'}</div></div>
+    <div class="case-body"><div class="grid">${block('用户画像',x['用户画像'])}${block('判分载体',x['判分载体'],true)}${block('场景背景',x['场景背景'],true,true)}${block('初始状态',x['初始状态'])}${block('轮次脚本',x['轮次脚本'],true,true)}${block('期望终态',x['期望终态'],true)}${block('二元判分问题',x['二元判分问题'],true,true)}${block('期望答案',x['期望答案'],true)}${block('禁止动作',x['禁止动作'],true)}${block('结构化信息断言',x['结构化信息断言'],true)}${block('生成来源',x['生成来源'])}</div>
+    <div class="review"><h3>重点审核清单</h3><div class="review-grid"><label><input data-k="scenario" type="checkbox" ${r.scenario?'checked':''}>场景与用户意图清楚，参数/状态不自相矛盾</label><label><input data-k="turns" type="checkbox" ${r.turns?'checked':''}>逐轮脚本可执行，检查轮次与埋点一致</label><label><input data-k="answer" type="checkbox" ${r.answer?'checked':''}>期望终态、期望答案与判分问题一致</label><label><input data-k="risk" type="checkbox" ${r.risk?'checked':''}>已核对禁止动作、负例边界与关键风险</label></div><textarea id="note" placeholder="写下审核备注（可选）">${esc(r.note||'')}</textarea><div class="nav"><button class="btn" id="prev">← 上一条</button><div><button class="btn primary" id="pass">✓ 通过</button> <button class="btn" id="fail">! 需修改</button></div><button class="btn" id="next">下一条 →</button></div></div></div>`;
+    document.querySelectorAll('[data-k]').forEach(e=>e.onchange=()=>{let z=state.records[x.case_id]||{};z[e.dataset.k]=e.checked;state.records[x.case_id]=z;save()});$('#note').oninput=()=>{let z=state.records[x.case_id]||{};z.note=$('#note').value;state.records[x.case_id]=z;save()};$('#pass').onclick=()=>mark('pass');$('#fail').onclick=()=>mark('fail');$('#prev').onclick=()=>move(-1);$('#next').onclick=()=>move(1)}
+  function mark(v){let x=state.filtered[state.index],r=state.records[x.case_id]||{};r.status=v;state.records[x.case_id]=r;save();toast(v==='pass'?'已标记为通过':'已标记为需修改');renderCase()}
+  function move(n){state.index=Math.max(0,Math.min(state.filtered.length-1,state.index+n));renderCase()}
+  $('#file').onchange=e=>{let f=e.target.files[0];if(f)load(f)};function load(f){let rd=new FileReader();rd.onload=()=>{try{let j=JSON.parse(rd.result),recommended=f.name==='multiturn_eval_set_approved.json'||j?.metadata?.artifact==='multiturn_eval_set_approved';if(!recommended&&!confirm('你选择的不是最终审核版 multiturn_eval_set_approved.json。\n\n建议取消后选择最终审核版；如果仍要打开这个文件，请点击“确定”。'))return;state.all=allItems(j);if(!state.all.length)throw new Error('文件中没有可审核的 items');populate();toast(`已加载 ${state.all.length} 条用例`)}catch(e){alert('JSON 解析或结构校验失败：'+e.message)}};rd.readAsText(f,'utf-8')}
+  ['search','dim','status','priority','tier','onlyKey','onlyUnreviewed'].forEach(id=>$('#'+id).addEventListener('input',()=>{state.index=0;apply()}));
+  $('#prev').onclick=()=>move(-1);$('#next').onclick=()=>move(1);document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft')move(-1);if(e.key==='ArrowRight')move(1);if(e.ctrlKey&&e.key.toLowerCase()==='s'){e.preventDefault();save();toast('审核记录已保存')}});
+  $('#clear').onclick=()=>{if(confirm('确定清空本浏览器中的审核记录吗？')){state.records={};save();renderCase();toast('已清空')}}
+  $('#export').onclick=()=>{let blob=new Blob([JSON.stringify(state.records,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='multiturn_audit_records.json';a.click();URL.revokeObjectURL(a.href)}
+  document.body.ondragover=e=>e.preventDefault();document.body.ondrop=e=>{e.preventDefault();let f=e.dataTransfer.files[0];if(f?.name.endsWith('.json'))load(f)}
+</script>
+</body>
+</html>
