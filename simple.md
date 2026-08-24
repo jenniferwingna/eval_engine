@@ -1,3 +1,7 @@
+{"intents":[{"id":"t1","category":"body","evidence":"打开车窗","after":null},
+            {"id":"t2","category":"hvac","evidence":"调到22度","after":"t1"}]}
+
+
 ## 1. 目标描述
 
 一个**全双工、零检索、流式**的Mola-Omni 模型 Harness：
