@@ -228,139 +228,138 @@ tr.dim td{color:var(--muted)}
 <h2>架构图</h2>
 <p>四张图。第一张是<b>工程视角</b>:几个进程、几个端口、谁跟谁说话、代码在哪个文件。后三张是<b>数据视角</b>,由远到近:一句话进来会经过什么 → 编排层内部 → 本文这条路。四张画的都是<b>接上模型之后</b>的形状。</p>
 
-<h3 style="font-family:'Familjen Grotesk',system-ui,sans-serif;font-size:16px;font-weight:600;color:var(--ink);margin:26px 0 10px">一 · 工程视角:三个进程、三个端口</h3>
+<h3 style="font-family:'Familjen Grotesk',system-ui,sans-serif;font-size:16px;font-weight:600;color:var(--ink);margin:26px 0 10px">一 · 工程视角:三层,四个服务</h3>
 <figure>
-<div class="fig-scroll">
-<svg viewBox="0 0 880 712" role="img" aria-label="工程视角架构图。浏览器打开座舱页 cockpit.html 与 omni-app.safe.js，页面由一台只发文件的静态托管提供。浏览器与编排层后端之间是一条 ws 长连接,端口 8871:上行推 base64 PCM 音频与语音起止事件,下行回 x.action 动作与回执、x.agenda、x.usage 以及 24k 音频块。编排层是单进程 asyncio 的 Python 模块 streaming/nonrag_agent_backend.py,纯 CPU,负责会话状态、hop 循环、闭集校验与执行,MAX_HOPS 为 10。它同进程 import 闭集目录 group_catalog 与底座 harness_b 的 car_sim、omni_local_backend、receipt_utils,这两块是代码和数据、没有端口。它向下有两个下游进程:流式模型引擎 agent_engine.py 在 8863 端口、跑 Qwen3-Omni-30B-A3B-Instruct、占 GPU 0 1 7,音频直接进模型、没有独立 ASR 服务;语音合成 tts_service.py 在 8852 端口、跑 ChatTTS、占 GPU 6,把去掉标签的口播文本变成 24k PCM。SoulX 影子端点只观察,默认不启用。三个进程由 start_streaming_nonrag.sh 拉起,模型目录或环境缺失直接 exit 1。">
+<svg viewBox="0 0 900 768" role="img" aria-label="三层架构图。接入层：浏览器里的座舱页面负责采麦克风、按静音 0.7 秒判断用户说完没有、把服务端已经执行完的动作镜像画到 2D/3D 车模上并播放回传语音（画的是镜像，不是它自己在执行）；旁边一台只发文件的静态托管进程（:8787）提供页面、车模素材和一个告诉页面该连哪个后端的配置接口，它不参与语音链路。浏览器与编排层之间是一条一直开着的 WebSocket 长连接，上行是音频流和「我说完了」的信号，下行是要执行的动作、执行回执、进度用量和合成好的语音。编排层（:8871）是整套系统唯一的大脑，纯 CPU 单进程，七件事：管会话进度、对第一跳的任务清单与逐字文本做对账、按进度只把当前这一大类的工具说明书喂给模型、拦截越界的工具名、调执行侧真的执行并把回执写回模型上下文、把末跳文本切片送去合成再转发给浏览器、一轮最多来回 10 跳。编排层同进程 import 两块模块：闭集工具目录把 547 个工具事先归成 20 个大类，只查表不检索；执行侧是车辆状态机，一台无头模拟器，是动作真正生效的地方、也是模型唯一看得见的那台车，把每个部件的开关和数值记在内存里，已经是目标状态就不执行、开子部件自动带开总开关、数值超范围自动钳回、工具名是编的就直说。推理层是两个吃 GPU 的服务，只被编排层调用：模型引擎跑 Qwen3-Omni 直接听原始音频、没有独立 ASR、是一条一直开着的会话；语音合成跑 ChatTTS，边合成边往回吐。">
 <defs>
 <marker id="fe" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--d-line)"/></marker>
 <marker id="fe2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"/></marker>
 </defs>
-
-<!-- 静态托管 -->
-<rect x="60" y="26" width="250" height="56" rx="8" fill="var(--d-band)" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="5 3"/>
-<text x="72" y="46" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--ink)" font-weight="700">静态托管(只发文件)</text>
-<text x="72" y="62" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">仓库里是 src/server.js :8787</text>
-<text x="72" y="76" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--muted)">换成 nginx 也一样,不参与运行时</text>
-<path d="M185 82 L185 96" stroke="var(--d-line)" stroke-width="1.3" fill="none" marker-end="url(#fe)"/>
-<text x="195" y="93" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">GET cockpit.html + omni-app.safe.js</text>
-
-<!-- 启动脚本 -->
-<rect x="330" y="26" width="250" height="56" rx="8" fill="var(--d-band)" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="5 3"/>
-<text x="342" y="46" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--ink)" font-weight="700">谁把三个进程拉起来</text>
-<text x="342" y="62" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">streaming/start_streaming_nonrag.sh</text>
-<text x="342" y="76" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--muted)">模型目录 / venv / GPU 缺一个就 exit 1</text>
-
-<!-- 读法 -->
-<rect x="600" y="26" width="260" height="90" rx="8" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.1"/>
-<text x="612" y="46" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--ink)" font-weight="700">一条请求怎么走完</text>
-<text x="612" y="63" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">① 浏览器把音频推给 :8871</text>
-<text x="612" y="78" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">② :8871 转给 :8863,收回文字</text>
-<text x="612" y="93" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">③ 文字里的 §call§ 就地执行,回执再回 :8863</text>
-<text x="612" y="108" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">④ 口播文本走 :8852 变成声音回浏览器</text>
-
+<path d="M58 16 L58 178" stroke="var(--rule)" stroke-width="1"/>
+<path d="M58 248 L58 510" stroke="var(--hot)" stroke-width="1.4"/>
+<path d="M58 580 L58 748" stroke="var(--rule)" stroke-width="1"/>
+<text font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--ink)" font-weight="700" text-anchor="middle" transform="translate(36,97) rotate(-90)">接入层</text><text font-family="Manrope, PingFang SC, sans-serif" font-size="8.4" fill="var(--muted)" text-anchor="middle" transform="translate(51,97) rotate(-90)">用户界面</text>
+<text font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--ink)" font-weight="700" text-anchor="middle" transform="translate(36,379) rotate(-90)">编排层</text><text font-family="Manrope, PingFang SC, sans-serif" font-size="8.4" fill="var(--muted)" text-anchor="middle" transform="translate(51,379) rotate(-90)">决策与执行</text>
+<text font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--ink)" font-weight="700" text-anchor="middle" transform="translate(36,664) rotate(-90)">推理层</text><text font-family="Manrope, PingFang SC, sans-serif" font-size="8.4" fill="var(--muted)" text-anchor="middle" transform="translate(51,664) rotate(-90)">吃 GPU</text>
 <!-- 浏览器 -->
-<rect x="60" y="100" width="500" height="118" rx="9" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.4"/>
-<text x="74" y="124" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" fill="var(--ink)" font-weight="700">浏览器 · 座舱页</text>
-<text x="546" y="124" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--muted)" text-anchor="end">public/streaming/cockpit.html + omni-app.safe.js</text>
-<path d="M74 133 L546 133" stroke="var(--rule)" stroke-width="1"/>
-<text x="74" y="153" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--body)">麦克风 → 16k PCM16;RMS 700ms 判「说完了」,端点在前端定</text>
-<text x="74" y="174" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--body)">下行文字里的 §call§ 本地再切一遍 → V2 / V3 仪表盘镜像</text>
-<text x="74" y="195" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--body)">四道参数改写只发生在这里,改不动后端真正执行的参数</text>
-<text x="74" y="212" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--muted)">扬声器播 24k PCM</text>
-
-<!-- ws 通道 -->
-<text x="60" y="243" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--ink)" font-weight="700">一条 ws 长连接</text>
-<text x="60" y="258" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--muted)">ws://&lt;host&gt;:8871</text>
-<path d="M200 218 L200 296" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fe)"/>
-<text x="210" y="240" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--muted)">input_audio_buffer.append</text>
-<text x="210" y="254" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">base64 PCM16 · 上行只有音频</text>
-<text x="210" y="268" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--muted)">x.speech_start / commit</text>
-<path d="M420 296 L420 218" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fe)"/>
-<text x="430" y="240" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--muted)">x.action</text>
-<text x="430" y="254" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">每个动作 + 它的回执</text>
-<text x="430" y="268" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--muted)">x.agenda / x.usage / 24k 音频块</text>
-
+<rect x="74" y="16" width="470" height="162" rx="8" fill="var(--d-band)" stroke="var(--d-line)" stroke-width="1.1"/>
+<text x="90" y="40" font-family="Manrope, PingFang SC, sans-serif" font-size="12" fill="var(--ink)" font-weight="700">浏览器 · 座舱页面</text>
+<text x="528" y="40" font-family="JetBrains Mono, monospace" font-size="8.6" fill="var(--muted)" text-anchor="end">客户端 · 无端口</text>
+<path d="M90 50 L528 50" stroke="var(--rule-soft)" stroke-width="1"/>
+<text x="90" y="72" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--body)">采麦克风,每 100ms 一块往上推</text>
+<text x="90" y="92" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--body)">判断「你说完没有」—— 静音连续 0.7 秒才算说完,断句在前端做</text>
+<text x="90" y="112" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--body)">把执行结果画到 2D/3D 车模上,并播放回传的语音</text>
+<text x="90" y="132" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--body)">车模上画的是<tspan font-weight="700">镜像</tspan> —— 动作早已在服务端执行完,这里只负责画出来</text>
+<text x="90" y="157" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">public/streaming/cockpit.html · omni-app.safe.js</text>
+<!-- 静态托管 -->
+<rect x="596" y="16" width="280" height="162" rx="8" fill="var(--d-band)" stroke="var(--d-line)" stroke-width="1.1"/>
+<text x="610" y="40" font-family="Manrope, PingFang SC, sans-serif" font-size="11.5" fill="var(--ink)" font-weight="700">静态托管</text>
+<text x="862" y="40" font-family="JetBrains Mono, monospace" font-size="8.6" fill="var(--muted)" text-anchor="end">进程 · :8787</text>
+<path d="M610 50 L862 50" stroke="var(--rule-soft)" stroke-width="1"/>
+<text x="610" y="72" font-family="Manrope, PingFang SC, sans-serif" font-size="9.3" fill="var(--body)">发座舱页面和 3D 车模素材</text>
+<text x="610" y="90" font-family="Manrope, PingFang SC, sans-serif" font-size="9.3" fill="var(--body)">一个配置接口,告诉页面「该连</text>
+<text x="610" y="105" font-family="Manrope, PingFang SC, sans-serif" font-size="9.3" fill="var(--body)">哪个后端」</text>
+<text x="610" y="125" font-family="Manrope, PingFang SC, sans-serif" font-size="9.0" fill="var(--muted)">不参与语音链路,换成 nginx 也一样</text>
+<text x="610" y="157" font-family="JetBrains Mono, monospace" font-size="8.6" fill="var(--muted)">src/server.js</text>
+<path d="M552 97 L590 97" stroke="var(--d-line)" stroke-width="1.3" fill="none" marker-end="url(#fe)"/>
+<text x="571" y="89" font-family="JetBrains Mono, monospace" font-size="7.8" fill="var(--muted)" text-anchor="middle">HTTP</text>
+<!-- WebSocket 长连接 -->
+<path d="M140 184 L140 242" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fe)"/>
+<text x="152" y="204" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">上行:音频流,和</text>
+<text x="152" y="219" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">「我说完了」的信号</text>
+<path d="M470 242 L470 184" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fe)"/>
+<text x="482" y="204" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">下行:要执行的动作、执行回执、</text>
+<text x="482" y="219" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">进度用量,和合成好的语音</text>
+<text x="876" y="202" font-family="JetBrains Mono, monospace" font-size="8.6" fill="var(--muted)" text-anchor="end">接口:WebSocket</text>
+<text x="876" y="219" font-family="Manrope, PingFang SC, sans-serif" font-size="9.2" fill="var(--muted)" text-anchor="end">一条长连接一直开着,不是一次一次的请求</text>
 <!-- 编排层 -->
-<rect x="60" y="300" width="500" height="180" rx="9" fill="var(--d-box)" stroke="var(--hot)" stroke-width="2"/>
-<text x="74" y="326" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" fill="var(--ink)" font-weight="700">编排层 · nonRAG 后端</text>
-<text x="546" y="326" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--muted)" text-anchor="end">streaming/nonrag_agent_backend.py</text>
-<text x="74" y="343" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">python -m streaming.nonrag_agent_backend · :8871 · 单进程 asyncio · 纯 CPU,不占 GPU</text>
-<path d="M74 352 L546 352" stroke="var(--rule)" stroke-width="1"/>
-<text x="74" y="373" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--body)">一条连接一个 Sess:agenda / agenda_index / active_group / 相位打点</text>
-<text x="74" y="394" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--body)">hop 循环:切 §…§ → 闭集校验 → 调 car_sim 执行 → 回执写回模型上下文</text>
-<text x="74" y="415" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--body)">MAX_HOPS = 10 是每轮回到模型次数的唯一硬上限</text>
-<text x="74" y="436" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--ink)" font-weight="700">本文那六步,全部发生在这一个盒子里</text>
-<rect x="74" y="448" width="472" height="22" rx="5" fill="var(--d-band)"/>
-<text x="84" y="463" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--muted)">约 800 行,但对外它只是一个模块:一个 ws 端口进来,两个下游出去。</text>
-
-<!-- 依赖:闭集目录 -->
-<rect x="600" y="300" width="260" height="86" rx="8" fill="var(--d-band)" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="5 3"/>
-<text x="612" y="321" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--ink)" font-weight="700">闭集目录</text>
-<text x="612" y="337" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">streaming/group_catalog.py</text>
-<text x="612" y="353" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">data/tools_manifest.json · 546 工具 / 20 大类</text>
-<text x="612" y="367" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">data/group_taxonomy.json</text>
-<text x="612" y="381" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">出现没登记的大类 → 启动就 raise</text>
-<path d="M600 343 L568 343" stroke="var(--d-line)" stroke-width="1.2" fill="none" marker-end="url(#fe)"/>
-<text x="584" y="336" font-family="JetBrains Mono, monospace" font-size="8.5" fill="var(--muted)" text-anchor="middle">import</text>
-
-<!-- 依赖:底座 -->
-<rect x="600" y="400" width="260" height="96" rx="8" fill="var(--d-band)" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="5 3"/>
-<text x="612" y="421" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--ink)" font-weight="700">车与语音的底座</text>
-<text x="612" y="437" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">vendor/StreamingModelHarness/harness_b</text>
-<text x="612" y="455" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">car_sim.py — 真正执行工具、出回执</text>
-<text x="612" y="470" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">omni_local_backend.py — TTS 客户端 / DSL_RE</text>
-<text x="612" y="485" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">receipt_utils.py — 回执格式</text>
-<path d="M600 448 L568 448" stroke="var(--d-line)" stroke-width="1.2" fill="none" marker-end="url(#fe)"/>
-<text x="584" y="441" font-family="JetBrains Mono, monospace" font-size="8.5" fill="var(--muted)" text-anchor="middle">import</text>
-
-<!-- SoulX -->
-<rect x="600" y="520" width="260" height="72" rx="8" fill="var(--d-band)" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="5 3"/>
-<text x="612" y="541" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--ink)" font-weight="700">SoulX 影子端点</text>
-<text x="612" y="558" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">只观察:不能提交、不能生成、不能执行</text>
-<text x="612" y="573" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">安全闸测出 20 条里 5 条早切,就此降为影子</text>
-<text x="612" y="587" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">SOULX_URL 默认空 → 整条不启用</text>
-<path d="M600 546 L586 546 L586 468 L566 468" stroke="var(--d-line)" stroke-width="1.2" fill="none" stroke-dasharray="4 3" marker-end="url(#fe)"/>
-<text x="590" y="540" font-family="JetBrains Mono, monospace" font-size="8.5" fill="var(--muted)" text-anchor="end">shadow</text>
-
-<!-- 下游:模型引擎 -->
-<path d="M180 480 L180 516" stroke="var(--accent)" stroke-width="1.6" fill="none" marker-start="url(#fe2)" marker-end="url(#fe2)"/>
-<text x="190" y="494" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--muted)">ws · AGENT_ENGINE_URL</text>
-<text x="190" y="507" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">音频和回执上去 · 文字下来</text>
-<rect x="60" y="520" width="240" height="150" rx="9" fill="var(--d-box)" stroke="var(--accent)" stroke-width="1.6"/>
-<text x="72" y="544" font-family="Manrope, PingFang SC, sans-serif" font-size="11.5" fill="var(--ink)" font-weight="700">流式模型引擎</text>
-<text x="72" y="560" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">harness_b/agent_engine.py · :8863</text>
-<text x="72" y="578" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">Qwen3-Omni-30B-A3B-Instruct</text>
-<text x="72" y="592" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">GPU 0,1,7</text>
-<text x="72" y="606" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">STREAM_MAX_KV 8000 / KEEP 4000</text>
-<text x="72" y="620" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">收 session.start / audio / obs</text>
-<text x="72" y="634" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">吐文字 delta,§标签§ 混在正文里</text>
-<rect x="72" y="644" width="216" height="20" rx="5" fill="var(--accent-soft)"/>
-<text x="80" y="658" font-family="Manrope, PingFang SC, sans-serif" font-size="9" fill="var(--ink)">音频直接进模型,没有独立 ASR 服务</text>
-
-<!-- 下游:TTS -->
-<path d="M430 480 L430 516" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fe)"/>
-<text x="440" y="494" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--muted)">http · TTS_LOCAL_URL</text>
-<text x="440" y="507" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">口播文本下去 · 音频块回来</text>
-<rect x="320" y="520" width="220" height="150" rx="9" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.4"/>
-<text x="332" y="544" font-family="Manrope, PingFang SC, sans-serif" font-size="11.5" fill="var(--ink)" font-weight="700">语音合成</text>
-<text x="332" y="560" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">harness_b/tts_service.py · :8852</text>
-<text x="332" y="578" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">ChatTTS</text>
-<text x="332" y="592" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">GPU 6</text>
-<text x="332" y="606" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">POST /tts_stream</text>
-<text x="332" y="620" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">收去掉 §标签§ 后的口播文本</text>
-<text x="332" y="634" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">→ 24k PCM,攒够一块就回下去</text>
-
+<rect x="74" y="248" width="470" height="262" rx="8" fill="var(--d-band)" stroke="var(--hot)" stroke-width="2"/>
+<text x="90" y="274" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" fill="var(--ink)" font-weight="700">编排层</text>
+<text x="150" y="274" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--hot)">整套系统唯一的大脑</text>
+<text x="528" y="274" font-family="JetBrains Mono, monospace" font-size="9.2" fill="var(--hot)" text-anchor="end">进程 · :8871</text>
+<path d="M90 286 L528 286" stroke="var(--rule-soft)" stroke-width="1"/>
+<text x="146" y="310" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--ink)" font-weight="700" text-anchor="end">会话与进度</text>
+<text x="158" y="310" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">记住这一轮拆出了几件事、现在办到第几件</text>
+<text x="146" y="334" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--ink)" font-weight="700" text-anchor="end">协议对账</text>
+<text x="158" y="334" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">第一跳的「任务清单」与「逐字文本」对不上就整轮驳回</text>
+<text x="146" y="358" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--ink)" font-weight="700" text-anchor="end">上下文供给</text>
+<text x="158" y="358" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">按进度只把当前这一大类的工具说明书喂给模型</text>
+<text x="146" y="382" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--ink)" font-weight="700" text-anchor="end">越界拦截</text>
+<text x="158" y="382" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">工具名不在当前这一类就不执行,驳回并列出合法名</text>
+<text x="146" y="406" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--ink)" font-weight="700" text-anchor="end">执行与回写</text>
+<text x="158" y="406" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">调执行侧真的把工具调掉,把回执写回模型的上下文</text>
+<text x="146" y="430" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--ink)" font-weight="700" text-anchor="end">语音下发</text>
+<text x="158" y="430" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">末跳的纯文本切成小片送去合成,声音转发给浏览器</text>
+<text x="146" y="454" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--ink)" font-weight="700" text-anchor="end">跳数预算</text>
+<text x="158" y="454" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">一轮最多来回 10 跳(MAX_HOPS),超了强制收尾</text>
+<text x="90" y="494" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">streaming/nonrag_agent_backend.py · 单进程 asyncio · 纯 CPU,不吃 GPU</text>
+<!-- 闭集工具目录 -->
+<rect x="596" y="248" width="280" height="104" rx="8" fill="var(--d-band)" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="5 3"/>
+<text x="610" y="270" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--ink)" font-weight="700">闭集工具目录</text>
+<text x="862" y="270" font-family="JetBrains Mono, monospace" font-size="8.4" fill="var(--muted)" text-anchor="end">同进程模块</text>
+<text x="610" y="292" font-family="Manrope, PingFang SC, sans-serif" font-size="9.3" fill="var(--body)">把 547 个工具事先归成 20 个大类:先</text>
+<text x="610" y="307" font-family="Manrope, PingFang SC, sans-serif" font-size="9.3" fill="var(--body)">让模型选大类,再只把那一类的清单</text>
+<text x="610" y="322" font-family="Manrope, PingFang SC, sans-serif" font-size="9.3" fill="var(--body)">给它 —— 不做检索,只查表</text>
+<text x="610" y="343" font-family="JetBrains Mono, monospace" font-size="8.4" fill="var(--muted)">streaming/group_catalog.py + data/*.json</text>
+<path d="M596 300 L552 300" stroke="var(--d-line)" stroke-width="1.2" fill="none" marker-end="url(#fe)"/>
+<text x="574" y="293" font-family="JetBrains Mono, monospace" font-size="7.6" fill="var(--muted)" text-anchor="middle">import</text>
+<!-- 执行侧 -->
+<rect x="596" y="368" width="280" height="142" rx="8" fill="var(--d-band)" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="5 3"/>
+<text x="610" y="390" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--ink)" font-weight="700">执行侧 · 车辆状态机</text>
+<text x="862" y="390" font-family="JetBrains Mono, monospace" font-size="8.4" fill="var(--muted)" text-anchor="end">同进程模块</text>
+<text x="610" y="412" font-family="Manrope, PingFang SC, sans-serif" font-size="9.3" fill="var(--body)"><tspan font-weight="700">动作真正生效的地方</tspan>,也是模型唯</text>
+<text x="610" y="427" font-family="Manrope, PingFang SC, sans-serif" font-size="9.3" fill="var(--body)">一看得见的那台「车」。部件状态记</text>
+<text x="610" y="442" font-family="Manrope, PingFang SC, sans-serif" font-size="9.3" fill="var(--body)">在内存里:已经是目标状态就不执行、</text>
+<text x="610" y="457" font-family="Manrope, PingFang SC, sans-serif" font-size="9.3" fill="var(--body)">开子部件自动带开总开关、数值超范</text>
+<text x="610" y="472" font-family="Manrope, PingFang SC, sans-serif" font-size="9.3" fill="var(--body)">围自动钳回、名字是编的就直说</text>
+<text x="610" y="494" font-family="JetBrains Mono, monospace" font-size="8.4" fill="var(--muted)">harness_b/car_sim.py · receipt_utils.py</text>
+<path d="M596 428 L552 428" stroke="var(--d-line)" stroke-width="1.2" fill="none" marker-end="url(#fe)"/>
+<text x="574" y="421" font-family="JetBrains Mono, monospace" font-size="7.6" fill="var(--muted)" text-anchor="middle">import</text>
+<path d="M160 516 L160 574" stroke="var(--accent)" stroke-width="1.4" fill="none" marker-start="url(#fe2)" marker-end="url(#fe2)"/>
+<text x="172" y="538" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">喂音频 · 要模型说下一句</text>
+<text x="172" y="553" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">收回模型吐出的文字</text>
+<path d="M470 516 L470 574" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-start="url(#fe)" marker-end="url(#fe)"/>
+<text x="482" y="538" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">给要口播的文字片段</text>
+<text x="482" y="553" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">收回 200ms 一包的声音</text>
+<text x="482" y="568" font-family="JetBrains Mono, monospace" font-size="7.8" fill="var(--muted)">客户端 omni_local_backend.py</text>
+<text x="876" y="538" font-family="Manrope, PingFang SC, sans-serif" font-size="9.2" fill="var(--muted)" text-anchor="end">两个推理服务只被编排层调用</text>
+<text x="876" y="553" font-family="Manrope, PingFang SC, sans-serif" font-size="9.2" fill="var(--muted)" text-anchor="end">浏览器碰不到它们</text>
+<!-- 模型引擎 -->
+<rect x="74" y="580" width="300" height="168" rx="8" fill="var(--d-band)" stroke="var(--accent)" stroke-width="1.6"/>
+<text x="90" y="606" font-family="Manrope, PingFang SC, sans-serif" font-size="12" fill="var(--ink)" font-weight="700">模型引擎</text>
+<text x="360" y="606" font-family="JetBrains Mono, monospace" font-size="9.2" fill="var(--accent)" text-anchor="end">进程 · :8863</text>
+<path d="M90 616 L360 616" stroke="var(--rule-soft)" stroke-width="1"/>
+<text x="90" y="636" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--body)">Qwen3-Omni,直接听原始音频</text>
+<text x="90" y="654" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--body)">整套系统没有独立的 ASR 服务</text>
+<text x="90" y="676" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--body)">一条一直开着的会话,不是一问一</text>
+<text x="90" y="694" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--body)">答的接口 —— 上一轮的记忆留在显</text>
+<text x="90" y="712" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--body)">存里,下一轮接着往后写</text>
+<text x="90" y="730" font-family="Manrope, PingFang SC, sans-serif" font-size="9.0" fill="var(--muted)">占 GPU 0,1,7</text>
+<text x="90" y="743" font-family="JetBrains Mono, monospace" font-size="8.2" fill="var(--muted)">vendor/…/harness_b/agent_engine.py</text>
+<!-- 语音合成 -->
+<rect x="406" y="580" width="250" height="168" rx="8" fill="var(--d-band)" stroke="var(--d-line)" stroke-width="1.1"/>
+<text x="420" y="606" font-family="Manrope, PingFang SC, sans-serif" font-size="12" fill="var(--ink)" font-weight="700">语音合成</text>
+<text x="642" y="606" font-family="JetBrains Mono, monospace" font-size="9.2" fill="var(--muted)" text-anchor="end">进程 · :8852</text>
+<path d="M420 616 L642 616" stroke="var(--rule-soft)" stroke-width="1"/>
+<text x="420" y="636" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--body)">ChatTTS。把去掉标签的</text>
+<text x="420" y="654" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--body)">纯文本变成声音</text>
+<text x="420" y="676" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--body)">边合成边往回吐,不用等</text>
+<text x="420" y="694" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--body)">整句合成完 —— 第一块声</text>
+<text x="420" y="712" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--body)">音约 105ms 就出来了</text>
+<text x="420" y="730" font-family="Manrope, PingFang SC, sans-serif" font-size="9.0" fill="var(--muted)">占 GPU 6</text>
+<text x="420" y="743" font-family="JetBrains Mono, monospace" font-size="8.2" fill="var(--muted)">vendor/…/tts_service.py</text>
 <!-- 图例 -->
-<path d="M60 684 L820 684" stroke="var(--rule)" stroke-width="1"/>
-<rect x="60" y="694" width="14" height="11" rx="3" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.4"/>
-<text x="82" y="703" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)">实线框 = 独立进程,有端口</text>
-<rect x="250" y="694" width="14" height="11" rx="3" fill="var(--d-band)" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="4 2.5"/>
-<text x="272" y="703" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)">虚线框 = 同进程的代码和数据,没有端口</text>
-<text x="560" y="703" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)">三个进程同机,走回环互联</text>
+<rect x="686" y="580" width="190" height="168" rx="8" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.1"/>
+<text x="700" y="604" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--ink)" font-weight="700">图例</text>
+<text x="700" y="628" font-family="Manrope, PingFang SC, sans-serif" font-size="9.2" fill="var(--body)">实线框 = 一个独立进程,</text>
+<text x="700" y="643" font-family="Manrope, PingFang SC, sans-serif" font-size="9.2" fill="var(--body)">有自己的端口</text>
+<text x="700" y="667" font-family="Manrope, PingFang SC, sans-serif" font-size="9.2" fill="var(--body)">虚线框 = import 进编排层</text>
+<text x="700" y="682" font-family="Manrope, PingFang SC, sans-serif" font-size="9.2" fill="var(--body)">的模块,跟它同一个进程,</text>
+<text x="700" y="697" font-family="Manrope, PingFang SC, sans-serif" font-size="9.2" fill="var(--body)">没有端口</text>
+<text x="700" y="721" font-family="Manrope, PingFang SC, sans-serif" font-size="9.2" fill="var(--body)">箭头标注 = 走什么协议、</text>
+<text x="700" y="736" font-family="Manrope, PingFang SC, sans-serif" font-size="9.2" fill="var(--body)">传什么东西</text>
 </svg>
-</div>
-<figcaption>整套东西<b>只有三个进程</b>:一个纯 CPU 的编排层(<code>:8871</code>),两个吃 GPU 的推理服务(<code>:8863</code> 模型、<code>:8852</code> 合成)。浏览器不直连模型,所有事都经过 <code>:8871</code>。三点值得记:<b>①</b> <code>nonrag_agent_backend.py</code> 八百来行,但它对外就是一个模块 —— 一个 ws 端口进,两个下游出,本文的六步全在它里面。<b>②</b> <b>没有独立的 ASR 服务</b>:音频原样喂给 Qwen3-Omni,所谓「ASR Head」是第一跳文本里的一条 <code>§asr …§</code> 标签,不是一个进程。<b>③</b> 虚线框不是服务,是同进程 <code>import</code> 进来的代码和数据 —— 闭集目录读两个 JSON,底座提供真正的执行器 <code>car_sim</code>。启动脚本缺模型目录、缺 venv、缺 GPU 都是 <code>exit 1</code>,没有「不接模型也能跑」的降级路径。</figcaption>
+<figcaption>这张图按<b>三层</b>看:<b>接入层</b>是浏览器里的座舱页面(收音、断句、画车、放声音),外加一台只发文件的网页服务器;<b>编排层</b>是唯一的大脑,浏览器只跟它说话,右边七行就是它这一轮要做的全部事情;<b>推理层</b>是两个吃 GPU 的服务,一个负责听和想,一个负责说,都只被编排层调用。四点值得补:<b>①</b> <b>没有独立的 ASR 服务</b>,音频原样喂给 Qwen3-Omni,所谓「ASR Head」是模型第一句话里的一条 <code>§asr …§</code> 标签,不是一个进程。<b>②</b> 编排层跟模型之间不是「一问一答的接口」,是一条一直开着的会话,上一轮的记忆留在显存里 —— 这是整套东西为什么快的关键。<b>③</b> 虚线两块不是服务,是 <code>import</code> 进编排层的代码和数据。其中<b>「执行侧」才是那台被调用的车</b>,别把它和接入层那个「座舱页面」搞混:<b>执行侧是权威状态,浏览器是镜像</b>。模型的 <code>§call§</code> 只在执行侧生效,「成功 / 无需执行 / 失败」这个结论也只由它给出,模型看得见的只有它;浏览器收到 <code>x.action</code> 之后只是把同一个动作再画一遍(<code>omni-app.safe.js:842</code> 的原话是「动作已在服务端 car_sim 执行,这里只做可视化镜像+日志」)。<b>关掉浏览器,整条链路照常跑完</b>——评测就是这么对着一批 wav 批量跑的;真要上车时把执行侧换成总线驱动,编排层这一侧一行都不用动。<b>④</b> 图里三个后端服务由<b>一条启动脚本</b>按「语音合成 → 模型引擎 → 编排层」的顺序拉起,缺模型目录或缺 Python 环境就直接 <code>exit 1</code>,<b>没有「不接模型也能跑」的降级</b>;静态托管不在这条脚本里,要另外起。图里 <code>vendor/…</code> 一律指 <code>vendor/StreamingModelHarness/</code>,其中 <code>car_sim.py</code>、<code>receipt_utils.py</code> 在 <code>harness_b/</code> 子目录下,<code>omni_local_backend.py</code>、<code>tts_service.py</code> 在<b>根目录</b>。</figcaption>
 </figure>
 
 <h3 style="font-family:'Familjen Grotesk',system-ui,sans-serif;font-size:16px;font-weight:600;color:var(--ink);margin:26px 0 10px">二 · 一句话进来，会经过什么、最后变成什么</h3>
