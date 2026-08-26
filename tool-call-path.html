@@ -211,84 +211,290 @@ tr.dim td{color:var(--muted)}
 <h3>名词解释</h3>
 <dl>
   <dt>编排层</dt>
-  <dd>harness 里<strong>负责按顺序调度所有任务的模块</strong>。它自己不做任何判断,只负责「先做这个、再做那个」,并把上一步的结果交给下一步。下面六步里,除了第 3 步(要判断)和第 6 步(交给执行端),其余都是它自己干的活。</dd>
+  <dd>harness 里<strong>负责按顺序调度所有任务的模块</strong>。它自己不做语义判断,只负责「先做这个、再做那个」,并把上一步的结果交给下一步。下面六步里,除了第 3 步(模型判断)和第 6 步(执行端),其余都是它自己干的活。</dd>
   <dt>Head</dt>
-  <dd><strong>做一次分类判断的部件</strong>。韩两个部份:一级 Head 判「属于哪个大类」,二级 Head 判「大类里的哪个工具」。本文的起点是一级 Head 已经跑完。</dd>
+  <dd><strong>做一次分类判断的角色</strong>,分两级:一级 Head 判「属于哪个大类」,二级 Head 判「大类里的哪个工具」。<b>两级都在同一个模型里</b> —— 是协议上的两次输出,不是两个独立训练出来的 decoder head,更不是两个模块。本文的起点是一级 Head 已经跑完。</dd>
 </dl>
 </div>
 
 <div class="setup">
-  <h3>这一趟的起点和终点</h3>
+  <h3>例子</h3>
   <p><b>用户说的话:</b> <span class="utter">把空调调到24度</span></p>
-  <p><b>起点:</b>一级 Head 已经跑完,结论是<strong> category = "climate"</strong>。但还不知道调的是哪个工具、参数是什么。</p>
+  <p><b>起点:</b>第一跳已经跑完,agenda 当前项的标签是<strong> climate</strong>。但还不知道调的是哪个工具、参数是什么。</p>
   <p><b>终点:</b>指令下发出去,拿回一张回执。</p>
 </div>
 
 <section class="band" style="border-top:0;padding-top:6px">
 <h2>架构图</h2>
-<p>三张图,由远到近:整个项目 → 编排层内部 → 本文这条路。</p>
+<p>四张图。第一张是<b>工程视角</b>:几个进程、几个端口、谁跟谁说话、代码在哪个文件。后三张是<b>数据视角</b>,由远到近:一句话进来会经过什么 → 编排层内部 → 本文这条路。四张画的都是<b>接上模型之后</b>的形状。</p>
 
-<h3 style="font-family:'Familjen Grotesk',system-ui,sans-serif;font-size:16px;font-weight:600;color:var(--ink);margin:26px 0 10px">一 · 整个仓库</h3>
+<h3 style="font-family:'Familjen Grotesk',system-ui,sans-serif;font-size:16px;font-weight:600;color:var(--ink);margin:26px 0 10px">一 · 工程视角:三个进程、三个端口</h3>
 <figure>
 <div class="fig-scroll">
-<svg viewBox="0 0 860 726" role="img" aria-label="项目全景：底层是两条路径共用的静态工具目录与二十类分类法；上面分成两栏，左栏是零 GPU 的逻辑 Demo，右栏是需要 GPU 的流式运行时；两栏都遵守同一条硬约束——没有向量库、没有检索。本文只覆盖左栏中段。">
-<defs><marker id="fc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--d-line)"/></marker></defs>
-<rect x="50" y="26" width="760" height="72" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.3"/><text x="66" y="47" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" font-weight="700" fill="var(--ink)">共享地基 · 两条路径读同一份静态数据</text><text x="794" y="47" font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--muted)" text-anchor="end">启动时读一次，之后只查表</text><text x="66" y="64" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">data/tools_manifest.json  →  547 个车控工具（+1 个内置，共 548）</text><text x="66" y="78" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">data/group_taxonomy.json  →  20 个大类的中文名、描述，和把 548 个工具分进这 20 个桶的 20 条规则</text>
-<text x="430" y="118" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)" text-anchor="middle">同一份目录，同一套 22 个一级标签，同一条「每类 ≤ 40」的上限</text>
-<line x1="240" y1="124" x2="240" y2="146" stroke="var(--d-line)" stroke-width="1.3" marker-end="url(#fc)"/>
-<line x1="620" y1="124" x2="620" y2="146" stroke="var(--d-line)" stroke-width="1.3" stroke-dasharray="4 4" marker-end="url(#fc)"/>
-<text x="50" y="142" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--accent)" font-weight="500">路径 A · 逻辑 Demo（零 GPU）</text>
-<text x="440" y="142" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--muted)" font-weight="500">路径 B · 流式运行时（要 GPU）</text>
-<rect x="50" y="152" width="370" height="60" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="4 4" opacity=".85"/><text x="66" y="173" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" font-weight="700" fill="var(--muted)">入口 · 浏览器打字 / Web Speech</text><text x="404" y="173" font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--muted)" text-anchor="end">public/</text><text x="66" y="190" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">拿到的就是一句文本</text>
-<rect x="440" y="152" width="370" height="60" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="4 4" opacity=".85"/><text x="456" y="173" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" font-weight="700" fill="var(--muted)">入口 · 麦克风 PCM16</text><text x="794" y="173" font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--muted)" text-anchor="end">cockpit</text><text x="456" y="190" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">每 100ms 一个音频块</text>
-<rect x="50" y="222" width="370" height="60" rx="8" fill="var(--d-box)" stroke="var(--accent)" stroke-width="1.6"/><text x="66" y="243" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" font-weight="700" fill="var(--ink)">编排层</text><text x="404" y="243" font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--muted)" text-anchor="end">src/planner.js</text><text x="66" y="260" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">切分 → 安全门 → 两级 Head → 抠参数</text><text x="66" y="274" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">串行，同一时刻只跑一个任务</text>
-<rect x="440" y="222" width="370" height="60" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="4 4" opacity=".85"/><text x="456" y="243" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" font-weight="700" fill="var(--muted)">判停 · RMS 静音 700ms</text><text x="794" y="243" font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--muted)" text-anchor="end">streaming/</text><text x="456" y="260" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">唯一有权提交的判停；SoulX 只旁路观测</text>
-<rect x="50" y="292" width="370" height="60" rx="8" fill="var(--d-box)" stroke="var(--hot)" stroke-width="2"/><text x="66" y="313" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" font-weight="700" fill="var(--ink)">判别实现 · 启动时二选一</text><text x="404" y="313" font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--muted)" text-anchor="end">src/classifier.js</text><text x="66" y="330" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">离线打分器（默认，不联网）</text><text x="66" y="344" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">或 OpenAI 兼容端点（配齐 3 个环境变量）</text>
-<rect x="440" y="292" width="370" height="60" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="4 4" opacity=".85"/><text x="456" y="313" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" font-weight="700" fill="var(--muted)">Qwen3-Omni · Thinker KV</text><text x="794" y="313" font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--muted)" text-anchor="end">vendor/</text><text x="456" y="330" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">音频每 1 秒增量写入，同一套两级 Head</text>
-<rect x="50" y="362" width="370" height="60" rx="8" fill="var(--d-box)" stroke="var(--accent)" stroke-width="1.6"/><text x="66" y="383" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" font-weight="700" fill="var(--ink)">执行端 · ToolSimulator</text><text x="404" y="383" font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--muted)" text-anchor="end">src/planner.js</text><text x="66" y="400" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">写一张内存表，ok 恒为 true</text>
-<rect x="440" y="362" width="370" height="60" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="4 4" opacity=".85"/><text x="456" y="383" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" font-weight="700" fill="var(--muted)">CarSim / 车辆 RPC</text><text x="794" y="383" font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--muted)" text-anchor="end">vendor/</text><text x="456" y="400" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">真实回执写回 KV → 流式 ChatTTS</text>
-<rect x="50" y="432" width="370" height="60" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="4 4" opacity=".85"/><text x="66" y="453" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" font-weight="700" fill="var(--muted)">一次性返回整个 JSON</text><text x="404" y="453" font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--muted)" text-anchor="end">/api/run</text><text x="66" y="470" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">trace + agenda + state，非流式</text>
-<rect x="440" y="432" width="370" height="60" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="4 4" opacity=".85"/><text x="456" y="453" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" font-weight="700" fill="var(--muted)">逐块下发语音</text><text x="794" y="453" font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--muted)" text-anchor="end">WebSocket</text><text x="456" y="470" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">首合成块约 105ms</text>
-<line x1="235" y1="213" x2="235" y2="221" stroke="var(--d-line)" stroke-width="1.3" marker-end="url(#fc)"/>
-<line x1="625" y1="213" x2="625" y2="221" stroke="var(--d-line)" stroke-width="1.3" stroke-dasharray="4 4" marker-end="url(#fc)"/>
-<line x1="235" y1="283" x2="235" y2="291" stroke="var(--d-line)" stroke-width="1.3" marker-end="url(#fc)"/>
-<line x1="625" y1="283" x2="625" y2="291" stroke="var(--d-line)" stroke-width="1.3" stroke-dasharray="4 4" marker-end="url(#fc)"/>
-<line x1="235" y1="353" x2="235" y2="361" stroke="var(--d-line)" stroke-width="1.3" marker-end="url(#fc)"/>
-<line x1="625" y1="353" x2="625" y2="361" stroke="var(--d-line)" stroke-width="1.3" stroke-dasharray="4 4" marker-end="url(#fc)"/>
-<line x1="235" y1="423" x2="235" y2="431" stroke="var(--d-line)" stroke-width="1.3" marker-end="url(#fc)"/>
-<line x1="625" y1="423" x2="625" y2="431" stroke="var(--d-line)" stroke-width="1.3" stroke-dasharray="4 4" marker-end="url(#fc)"/>
-<path d="M40 222 L32 222 L32 422 L40 422" fill="none" stroke="var(--accent)" stroke-width="1.6"/>
-<text x="26" y="322" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--accent)" font-weight="500" transform="rotate(-90 26 322)" text-anchor="middle">本文讲的六步</text>
-<rect x="50" y="506" width="760" height="58" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.3"/><text x="66" y="527" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" font-weight="700" fill="var(--ink)">两条路径共同的硬约束</text><text x="794" y="527" font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--muted)" text-anchor="end">两级闭集分类</text><text x="66" y="544" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">没有向量库、没有 embedding、没有 BM25、没有 top-k 召回、没有运行时工具检索</text><text x="66" y="558" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">候选集永远由静态目录决定；判别方只能在给定清单里选一个，选清单外的当场抛错</text>
-<line x1="50" y1="592" x2="810" y2="592" stroke="var(--rule)" stroke-width="1"/>
-<rect x="50" y="608" width="13" height="13" rx="3" fill="none" stroke="var(--accent)" stroke-width="1.6"/><text x="72" y="619" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--muted)">本文覆盖的部分</text>
-<rect x="230" y="608" width="13" height="13" rx="3" fill="none" stroke="var(--hot)" stroke-width="2"/><text x="252" y="619" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--muted)">唯一要做判断的地方</text>
-<rect x="440" y="608" width="13" height="13" rx="3" fill="none" stroke="var(--d-line)" stroke-width="1.3"/><text x="462" y="619" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--muted)">两条路径共用</text>
-<rect x="620" y="608" width="13" height="13" rx="3" fill="none" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="4 3"/><text x="642" y="619" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--muted)">不在本文范围</text>
-<text x="50" y="650" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--muted)">两条路径不是新旧关系，是同时存在的两套跑法：左边零 GPU，用来看清分类逻辑；右边要 GPU，是真会出声、会动车的那条。</text>
-<text x="50" y="672" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--muted)">它们共用同一份工具目录和同一套 20 类分类法 —— 所以在左边看懂的分类行为，右边是一样的。</text>
-<text x="50" y="694" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--muted)">注意：仓库里 91.5929% 那个指标属于右边基座的历史基线，不是这套新分类管线跑出来的成绩。</text>
+<svg viewBox="0 0 880 712" role="img" aria-label="工程视角架构图。浏览器打开座舱页 cockpit.html 与 omni-app.safe.js，页面由一台只发文件的静态托管提供。浏览器与编排层后端之间是一条 ws 长连接,端口 8871:上行推 base64 PCM 音频与语音起止事件,下行回 x.action 动作与回执、x.agenda、x.usage 以及 24k 音频块。编排层是单进程 asyncio 的 Python 模块 streaming/nonrag_agent_backend.py,纯 CPU,负责会话状态、hop 循环、闭集校验与执行,MAX_HOPS 为 10。它同进程 import 闭集目录 group_catalog 与底座 harness_b 的 car_sim、omni_local_backend、receipt_utils,这两块是代码和数据、没有端口。它向下有两个下游进程:流式模型引擎 agent_engine.py 在 8863 端口、跑 Qwen3-Omni-30B-A3B-Instruct、占 GPU 0 1 7,音频直接进模型、没有独立 ASR 服务;语音合成 tts_service.py 在 8852 端口、跑 ChatTTS、占 GPU 6,把去掉标签的口播文本变成 24k PCM。SoulX 影子端点只观察,默认不启用。三个进程由 start_streaming_nonrag.sh 拉起,模型目录或环境缺失直接 exit 1。">
+<defs>
+<marker id="fe" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--d-line)"/></marker>
+<marker id="fe2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"/></marker>
+</defs>
+
+<!-- 静态托管 -->
+<rect x="60" y="26" width="250" height="56" rx="8" fill="var(--d-band)" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="5 3"/>
+<text x="72" y="46" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--ink)" font-weight="700">静态托管(只发文件)</text>
+<text x="72" y="62" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">仓库里是 src/server.js :8787</text>
+<text x="72" y="76" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--muted)">换成 nginx 也一样,不参与运行时</text>
+<path d="M185 82 L185 96" stroke="var(--d-line)" stroke-width="1.3" fill="none" marker-end="url(#fe)"/>
+<text x="195" y="93" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">GET cockpit.html + omni-app.safe.js</text>
+
+<!-- 启动脚本 -->
+<rect x="330" y="26" width="250" height="56" rx="8" fill="var(--d-band)" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="5 3"/>
+<text x="342" y="46" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--ink)" font-weight="700">谁把三个进程拉起来</text>
+<text x="342" y="62" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">streaming/start_streaming_nonrag.sh</text>
+<text x="342" y="76" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--muted)">模型目录 / venv / GPU 缺一个就 exit 1</text>
+
+<!-- 读法 -->
+<rect x="600" y="26" width="260" height="90" rx="8" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.1"/>
+<text x="612" y="46" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--ink)" font-weight="700">一条请求怎么走完</text>
+<text x="612" y="63" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">① 浏览器把音频推给 :8871</text>
+<text x="612" y="78" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">② :8871 转给 :8863,收回文字</text>
+<text x="612" y="93" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">③ 文字里的 §call§ 就地执行,回执再回 :8863</text>
+<text x="612" y="108" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">④ 口播文本走 :8852 变成声音回浏览器</text>
+
+<!-- 浏览器 -->
+<rect x="60" y="100" width="500" height="118" rx="9" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.4"/>
+<text x="74" y="124" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" fill="var(--ink)" font-weight="700">浏览器 · 座舱页</text>
+<text x="546" y="124" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--muted)" text-anchor="end">public/streaming/cockpit.html + omni-app.safe.js</text>
+<path d="M74 133 L546 133" stroke="var(--rule)" stroke-width="1"/>
+<text x="74" y="153" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--body)">麦克风 → 16k PCM16;RMS 700ms 判「说完了」,端点在前端定</text>
+<text x="74" y="174" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--body)">下行文字里的 §call§ 本地再切一遍 → V2 / V3 仪表盘镜像</text>
+<text x="74" y="195" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--body)">四道参数改写只发生在这里,改不动后端真正执行的参数</text>
+<text x="74" y="212" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--muted)">扬声器播 24k PCM</text>
+
+<!-- ws 通道 -->
+<text x="60" y="243" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--ink)" font-weight="700">一条 ws 长连接</text>
+<text x="60" y="258" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--muted)">ws://&lt;host&gt;:8871</text>
+<path d="M200 218 L200 296" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fe)"/>
+<text x="210" y="240" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--muted)">input_audio_buffer.append</text>
+<text x="210" y="254" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">base64 PCM16 · 上行只有音频</text>
+<text x="210" y="268" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--muted)">x.speech_start / commit</text>
+<path d="M420 296 L420 218" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fe)"/>
+<text x="430" y="240" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--muted)">x.action</text>
+<text x="430" y="254" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">每个动作 + 它的回执</text>
+<text x="430" y="268" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--muted)">x.agenda / x.usage / 24k 音频块</text>
+
+<!-- 编排层 -->
+<rect x="60" y="300" width="500" height="180" rx="9" fill="var(--d-box)" stroke="var(--hot)" stroke-width="2"/>
+<text x="74" y="326" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" fill="var(--ink)" font-weight="700">编排层 · nonRAG 后端</text>
+<text x="546" y="326" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--muted)" text-anchor="end">streaming/nonrag_agent_backend.py</text>
+<text x="74" y="343" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">python -m streaming.nonrag_agent_backend · :8871 · 单进程 asyncio · 纯 CPU,不占 GPU</text>
+<path d="M74 352 L546 352" stroke="var(--rule)" stroke-width="1"/>
+<text x="74" y="373" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--body)">一条连接一个 Sess:agenda / agenda_index / active_group / 相位打点</text>
+<text x="74" y="394" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--body)">hop 循环:切 §…§ → 闭集校验 → 调 car_sim 执行 → 回执写回模型上下文</text>
+<text x="74" y="415" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--body)">MAX_HOPS = 10 是每轮回到模型次数的唯一硬上限</text>
+<text x="74" y="436" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--ink)" font-weight="700">本文那六步,全部发生在这一个盒子里</text>
+<rect x="74" y="448" width="472" height="22" rx="5" fill="var(--d-band)"/>
+<text x="84" y="463" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--muted)">约 800 行,但对外它只是一个模块:一个 ws 端口进来,两个下游出去。</text>
+
+<!-- 依赖:闭集目录 -->
+<rect x="600" y="300" width="260" height="86" rx="8" fill="var(--d-band)" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="5 3"/>
+<text x="612" y="321" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--ink)" font-weight="700">闭集目录</text>
+<text x="612" y="337" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">streaming/group_catalog.py</text>
+<text x="612" y="353" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">data/tools_manifest.json · 546 工具 / 20 大类</text>
+<text x="612" y="367" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">data/group_taxonomy.json</text>
+<text x="612" y="381" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">出现没登记的大类 → 启动就 raise</text>
+<path d="M600 343 L568 343" stroke="var(--d-line)" stroke-width="1.2" fill="none" marker-end="url(#fe)"/>
+<text x="584" y="336" font-family="JetBrains Mono, monospace" font-size="8.5" fill="var(--muted)" text-anchor="middle">import</text>
+
+<!-- 依赖:底座 -->
+<rect x="600" y="400" width="260" height="96" rx="8" fill="var(--d-band)" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="5 3"/>
+<text x="612" y="421" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--ink)" font-weight="700">车与语音的底座</text>
+<text x="612" y="437" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">vendor/StreamingModelHarness/harness_b</text>
+<text x="612" y="455" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">car_sim.py — 真正执行工具、出回执</text>
+<text x="612" y="470" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">omni_local_backend.py — TTS 客户端 / DSL_RE</text>
+<text x="612" y="485" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">receipt_utils.py — 回执格式</text>
+<path d="M600 448 L568 448" stroke="var(--d-line)" stroke-width="1.2" fill="none" marker-end="url(#fe)"/>
+<text x="584" y="441" font-family="JetBrains Mono, monospace" font-size="8.5" fill="var(--muted)" text-anchor="middle">import</text>
+
+<!-- SoulX -->
+<rect x="600" y="520" width="260" height="72" rx="8" fill="var(--d-band)" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="5 3"/>
+<text x="612" y="541" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--ink)" font-weight="700">SoulX 影子端点</text>
+<text x="612" y="558" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">只观察:不能提交、不能生成、不能执行</text>
+<text x="612" y="573" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">安全闸测出 20 条里 5 条早切,就此降为影子</text>
+<text x="612" y="587" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">SOULX_URL 默认空 → 整条不启用</text>
+<path d="M600 546 L586 546 L586 468 L566 468" stroke="var(--d-line)" stroke-width="1.2" fill="none" stroke-dasharray="4 3" marker-end="url(#fe)"/>
+<text x="590" y="540" font-family="JetBrains Mono, monospace" font-size="8.5" fill="var(--muted)" text-anchor="end">shadow</text>
+
+<!-- 下游:模型引擎 -->
+<path d="M180 480 L180 516" stroke="var(--accent)" stroke-width="1.6" fill="none" marker-start="url(#fe2)" marker-end="url(#fe2)"/>
+<text x="190" y="494" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--muted)">ws · AGENT_ENGINE_URL</text>
+<text x="190" y="507" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">音频和回执上去 · 文字下来</text>
+<rect x="60" y="520" width="240" height="150" rx="9" fill="var(--d-box)" stroke="var(--accent)" stroke-width="1.6"/>
+<text x="72" y="544" font-family="Manrope, PingFang SC, sans-serif" font-size="11.5" fill="var(--ink)" font-weight="700">流式模型引擎</text>
+<text x="72" y="560" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">harness_b/agent_engine.py · :8863</text>
+<text x="72" y="578" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">Qwen3-Omni-30B-A3B-Instruct</text>
+<text x="72" y="592" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">GPU 0,1,7</text>
+<text x="72" y="606" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">STREAM_MAX_KV 8000 / KEEP 4000</text>
+<text x="72" y="620" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">收 session.start / audio / obs</text>
+<text x="72" y="634" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">吐文字 delta,§标签§ 混在正文里</text>
+<rect x="72" y="644" width="216" height="20" rx="5" fill="var(--accent-soft)"/>
+<text x="80" y="658" font-family="Manrope, PingFang SC, sans-serif" font-size="9" fill="var(--ink)">音频直接进模型,没有独立 ASR 服务</text>
+
+<!-- 下游:TTS -->
+<path d="M430 480 L430 516" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fe)"/>
+<text x="440" y="494" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--muted)">http · TTS_LOCAL_URL</text>
+<text x="440" y="507" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">口播文本下去 · 音频块回来</text>
+<rect x="320" y="520" width="220" height="150" rx="9" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.4"/>
+<text x="332" y="544" font-family="Manrope, PingFang SC, sans-serif" font-size="11.5" fill="var(--ink)" font-weight="700">语音合成</text>
+<text x="332" y="560" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">harness_b/tts_service.py · :8852</text>
+<text x="332" y="578" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">ChatTTS</text>
+<text x="332" y="592" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">GPU 6</text>
+<text x="332" y="606" font-family="JetBrains Mono, monospace" font-size="8.8" fill="var(--muted)">POST /tts_stream</text>
+<text x="332" y="620" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">收去掉 §标签§ 后的口播文本</text>
+<text x="332" y="634" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">→ 24k PCM,攒够一块就回下去</text>
+
+<!-- 图例 -->
+<path d="M60 684 L820 684" stroke="var(--rule)" stroke-width="1"/>
+<rect x="60" y="694" width="14" height="11" rx="3" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.4"/>
+<text x="82" y="703" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)">实线框 = 独立进程,有端口</text>
+<rect x="250" y="694" width="14" height="11" rx="3" fill="var(--d-band)" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="4 2.5"/>
+<text x="272" y="703" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)">虚线框 = 同进程的代码和数据,没有端口</text>
+<text x="560" y="703" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)">三个进程同机,走回环互联</text>
 </svg>
 </div>
+<figcaption>整套东西<b>只有三个进程</b>:一个纯 CPU 的编排层(<code>:8871</code>),两个吃 GPU 的推理服务(<code>:8863</code> 模型、<code>:8852</code> 合成)。浏览器不直连模型,所有事都经过 <code>:8871</code>。三点值得记:<b>①</b> <code>nonrag_agent_backend.py</code> 八百来行,但它对外就是一个模块 —— 一个 ws 端口进,两个下游出,本文的六步全在它里面。<b>②</b> <b>没有独立的 ASR 服务</b>:音频原样喂给 Qwen3-Omni,所谓「ASR Head」是第一跳文本里的一条 <code>§asr …§</code> 标签,不是一个进程。<b>③</b> 虚线框不是服务,是同进程 <code>import</code> 进来的代码和数据 —— 闭集目录读两个 JSON,底座提供真正的执行器 <code>car_sim</code>。启动脚本缺模型目录、缺 venv、缺 GPU 都是 <code>exit 1</code>,没有「不接模型也能跑」的降级路径。</figcaption>
 </figure>
 
-<h3 style="font-family:'Familjen Grotesk',system-ui,sans-serif;font-size:16px;font-weight:600;color:var(--ink);margin:26px 0 10px">二 · 编排层</h3>
+<h3 style="font-family:'Familjen Grotesk',system-ui,sans-serif;font-size:16px;font-weight:600;color:var(--ink);margin:26px 0 10px">二 · 一句话进来，会经过什么、最后变成什么</h3>
 <figure>
 <div class="fig-scroll">
-<svg viewBox="0 0 860 812" role="img" aria-label="编排层任务全图：入口、Query 切分、安全语义门、一级 Head 之后分出对话、导航 Agent 与三种非执行分支，均置灰；着色的是本文关注的六步——取候选、压 schema、二级 Head、抠参数、拼 tool call、下发。">
+<svg viewBox="0 0 880 900" role="img" aria-label="一句 user query 进入 MoLA-Omni；Intent Head 判出三条分支之一，ASR Head 给出规整后的 query 文本。dialog 分支由 MoLA-Omni 直接续写成 agent response；tool 分支装载唯一工具的 Schema，回到 MoLA-Omni 生成调用，执行后拿回 tool response，再由 rules 或 MoLA-Omni 播报成 agent response；subagent 分支交给子代理，产出 subagent response。同一个 MoLA-Omni 在一轮里被回到两到三次；tool 分支的工具名和参数由模型在同一次输出里给出，编排层只做切分与闭集校验。">
+<defs><marker id="fc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--d-line)"/></marker><marker id="fc2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"/></marker></defs>
+<rect x="347" y="18" width="150" height="32" rx="16" fill="var(--d-band)" stroke="var(--d-line)" stroke-width="1.3"/>
+<text x="422" y="38.5" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" fill="var(--ink)" text-anchor="middle" font-weight="700">user query</text>
+<path d="M422 50 L422 74" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fc)"/>
+<rect x="245" y="76" width="355" height="88" rx="9" fill="var(--d-box)" stroke="var(--hot)" stroke-width="2"/>
+<text x="261" y="96" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" fill="var(--ink)" text-anchor="start" font-weight="700">MoLA-Omni · 单模型双头</text>
+<text x="584" y="96" font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--muted)" text-anchor="end">一轮里会被回到 2~3 次</text>
+<rect x="261" y="104" width="159" height="46" rx="6" fill="var(--d-band)" stroke="var(--d-line)" stroke-width="1"/>
+<text x="340" y="122" font-family="Manrope, PingFang SC, sans-serif" font-size="11.5" fill="var(--ink)" text-anchor="middle" font-weight="700">Intent Head</text>
+<text x="340" y="138" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="middle">决定去哪</text>
+<rect x="432" y="104" width="152" height="46" rx="6" fill="var(--d-band)" stroke="var(--accent)" stroke-width="1.2"/>
+<text x="508" y="122" font-family="Manrope, PingFang SC, sans-serif" font-size="11.5" fill="var(--ink)" text-anchor="middle" font-weight="700">ASR Head</text>
+<text x="508" y="138" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--muted)" text-anchor="middle">决定带什么去 · 每轮第一跳必发</text>
+<path d="M340 164 L340 186" stroke="var(--d-line)" stroke-width="1.4" fill="none" stroke-linejoin="round"/>
+<path d="M128 186 L748 186" stroke="var(--d-line)" stroke-width="1.4" fill="none" stroke-linejoin="round"/>
+<path d="M128 186 L128 202" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fc)"/>
+<path d="M440 186 L440 202" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fc)"/>
+<path d="M748 186 L748 202" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fc)"/>
+<path d="M508 164 L508 174 L270 174 L270 372" stroke="var(--accent)" stroke-width="1.4" fill="none" stroke-linejoin="round"/>
+<path d="M270 372 L320 372" stroke="var(--accent)" stroke-width="1.4" fill="none" marker-end="url(#fc2)"/>
+<path d="M508 174 L862 174 L862 298" stroke="var(--accent)" stroke-width="1.4" fill="none" stroke-linejoin="round"/>
+<path d="M862 298 L840 298" stroke="var(--accent)" stroke-width="1.4" fill="none" marker-end="url(#fc2)"/>
+<rect x="240" y="222" width="60" height="15" fill="var(--d-box)"/>
+<text x="270" y="233" font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--accent)" text-anchor="middle" font-weight="600">tool query</text>
+<rect x="778" y="256" width="84" height="15" fill="var(--d-box)"/>
+<text x="858" y="267" font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--accent)" text-anchor="end" font-weight="600">subagent query</text>
+<rect x="40.0" y="204" width="176" height="46" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.3"/>
+<text x="128" y="224" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" fill="var(--ink)" text-anchor="middle" font-weight="700">① dialog intent</text>
+<text x="128" y="240" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="middle">闲聊、问答，不动车</text>
+<rect x="40.0" y="282" width="176" height="46" rx="8" fill="var(--hot-soft)" stroke="var(--hot)" stroke-width="2"/>
+<text x="128" y="302" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" fill="var(--ink)" text-anchor="middle" font-weight="700">MoLA-Omni</text>
+<text x="128" y="318" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="middle">不装任何 Schema，直接续写</text>
+<path d="M128 250 L128 280" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fc)"/>
+<rect x="40.0" y="360" width="176" height="46" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+<text x="128" y="380" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" fill="var(--ink)" text-anchor="middle" font-weight="700">agent response</text>
+<text x="128" y="396" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="middle">流式吐字</text>
+<path d="M128 328 L128 358" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fc)"/>
+<rect x="322.0" y="204" width="236" height="46" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.3"/>
+<text x="440" y="224" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" fill="var(--ink)" text-anchor="middle" font-weight="700">② tool intent</text>
+<text x="440" y="240" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="middle">要执行一个车控动作</text>
+<rect x="322.0" y="282" width="236" height="46" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.3"/>
+<text x="440" y="302" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" fill="var(--ink)" text-anchor="middle" font-weight="700">tool schema</text>
+<text x="440" y="318" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="middle">按大类取候选，压成精简 Schema</text>
+<path d="M440 250 L440 280" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fc)"/>
+<rect x="322.0" y="360" width="236" height="46" rx="8" fill="var(--hot-soft)" stroke="var(--hot)" stroke-width="2"/>
+<text x="440" y="380" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" fill="var(--ink)" text-anchor="middle" font-weight="700">MoLA-Omni</text>
+<text x="440" y="396" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="middle">照 Schema 吐出 §call 工具名 参数§</text>
+<path d="M440 328 L440 358" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fc)"/>
+<rect x="322.0" y="438" width="236" height="46" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.3"/>
+<text x="440" y="458" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" fill="var(--ink)" text-anchor="middle" font-weight="700">编排层 · 切出调用并校验</text>
+<text x="440" y="474" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="middle">正则切标签 + 闭集硬闸</text>
+<path d="M440 406 L440 436" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fc)"/>
+<rect x="322.0" y="516" width="236" height="46" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.3"/>
+<text x="440" y="536" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" fill="var(--ink)" text-anchor="middle" font-weight="700">tool calling</text>
+<text x="440" y="552" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="middle">car_sim 执行，真正改车的状态</text>
+<path d="M440 484 L440 514" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fc)"/>
+<rect x="322.0" y="594" width="236" height="46" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.3"/>
+<text x="440" y="614" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" fill="var(--ink)" text-anchor="middle" font-weight="700">tool response</text>
+<text x="440" y="630" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="middle">{ 结果, 部件, 现态 } → 写回模型 KV</text>
+<path d="M440 562 L440 592" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fc)"/>
+<rect x="322.0" y="672" width="236" height="46" rx="8" fill="var(--hot-soft)" stroke="var(--hot)" stroke-width="2"/>
+<text x="440" y="692" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" fill="var(--ink)" text-anchor="middle" font-weight="700">rules 或 MoLA-Omni</text>
+<text x="440" y="708" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="middle">播报分流</text>
+<path d="M440 640 L440 670" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fc)"/>
+<rect x="322.0" y="750" width="236" height="46" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+<text x="440" y="777.5" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" fill="var(--ink)" text-anchor="middle" font-weight="700">agent response</text>
+<path d="M440 718 L440 748" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fc)"/>
+<rect x="658.0" y="204" width="180" height="46" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.3"/>
+<text x="748" y="224" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" fill="var(--ink)" text-anchor="middle" font-weight="700">③ subagent intent</text>
+<text x="748" y="240" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="middle">一段多步任务</text>
+<rect x="658.0" y="282" width="180" height="46" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.3"/>
+<text x="748" y="302" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" fill="var(--ink)" text-anchor="middle" font-weight="700">subagent</text>
+<text x="748" y="318" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="middle">独立跑完，产出步骤计划</text>
+<path d="M748 250 L748 280" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fc)"/>
+<rect x="658.0" y="360" width="180" height="46" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+<text x="748" y="380" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" fill="var(--ink)" text-anchor="middle" font-weight="700">subagent response</text>
+<text x="748" y="396" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="middle">播报摘要</text>
+<path d="M748 328 L748 358" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fc)"/>
+<path d="M572 282 L580 282 L580 562 L572 562" stroke="var(--accent)" stroke-width="1.6" fill="none"/>
+<text x="588" y="300" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--accent)" text-anchor="start" font-weight="700">本文的六步</text>
+<text x="588" y="315" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--muted)" text-anchor="start">都在这一段里</text>
+<path d="M558 461 L594 461" stroke="var(--d-line)" stroke-width="1" stroke-dasharray="2 3" fill="none"/>
+<rect x="594" y="424" width="272" height="92" rx="8" fill="var(--d-band)"/>
+<text x="608" y="444" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--ink)" text-anchor="start" font-weight="700">工具名和参数是同一次输出</text>
+<text x="608" y="462" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="start">模型照 Schema 直接写出整条调用，</text>
+<text x="608" y="477" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="start">编排层不生产任何参数值，只做三件事：</text>
+<text x="608" y="492" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="start">覆盖相对位置、吐空参时兜底、</text>
+<text x="608" y="507" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="start">英文枚举归一 —— 全是在改模型给的值。</text>
+<path d="M558 617 L594 617" stroke="var(--d-line)" stroke-width="1" stroke-dasharray="2 3" fill="none"/>
+<rect x="594" y="594" width="272" height="46" rx="8" fill="var(--d-band)"/>
+<text x="608" y="614" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--ink)" text-anchor="start" font-weight="700">tool response 是判断成败的唯一依据</text>
+<text x="608" y="632" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="start">三态：成功 / 无需执行 / 失败；失败回执带自救说明</text>
+<path d="M558 695 L594 695" stroke="var(--d-line)" stroke-width="1" stroke-dasharray="2 3" fill="none"/>
+<rect x="594" y="664" width="272" height="92" rx="8" fill="var(--d-band)"/>
+<text x="608" y="684" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--ink)" text-anchor="start" font-weight="700">播报分流的条件</text>
+<text x="608" y="702" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="start">全部任务都是工具调用、且全部成功</text>
+<text x="608" y="717" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="start">  → 走 rules 模板，省一次模型往返</text>
+<text x="608" y="732" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="start">沾上对话 / 子代理 / 任何失败或空结果</text>
+<text x="608" y="747" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="start">  → 回 MoLA-Omni，基于真实回执组织回答</text>
+<line x1="40" y1="822" x2="866" y2="822" stroke="var(--rule)" stroke-width="1"/>
+<rect x="40" y="839" width="16" height="12" rx="3" fill="var(--hot-soft)" stroke="var(--hot)" stroke-width="2"/>
+<text x="64" y="848" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)" text-anchor="start">琥珀 = 同一个 MoLA-Omni，被反复回到</text>
+<rect x="300" y="839" width="16" height="12" rx="3" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+<text x="324" y="848" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)" text-anchor="start">蓝底 = 这一轮的出口</text>
+<path d="M540 845 L556 845" stroke="var(--accent)" stroke-width="1.6" fill="none"/>
+<text x="564" y="848" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)" text-anchor="start">蓝线 = ASR Head 及其产物（每轮第一跳必发）</text>
+</svg>
+</div>
+<figcaption>这张画的是 <code>two-layer-intent</code> 分支<b>接上模型后的实际形状</b>(<code>streaming/</code> + <code>public/streaming/</code>)。三点说明:<b>①</b> 图里三个 <code>MoLA-Omni</code> 是<b>同一个模型</b>,一轮里被回到 2~3 次,不是三个部件。<b>②</b> <code>Intent Head</code> 和 <code>ASR Head</code> 是<b>协议级的逻辑输出</b> —— 每轮第一跳同跳吐出的两条标签,不是两个独立训练的 decoder head。<b>③</b> tool 分支上<b>工具名和参数是同一次输出里的同一串文本</b>,编排层只负责把它切出来、挡住越界的,不生产参数。</figcaption>
+</figure>
+
+<h3 style="font-family:'Familjen Grotesk',system-ui,sans-serif;font-size:16px;font-weight:600;color:var(--ink);margin:26px 0 10px">三 · 编排层</h3>
+<figure>
+<div class="fig-scroll">
+<svg viewBox="0 0 860 812" role="img" aria-label="编排层任务全图：入口、ASR Head 切分、安全语义、一级 Head 之后分出对话、导航 Agent 与三种非执行分支，均置灰；着色的是本文关注的六步——取候选、压 schema、模型选工具并写参数、切出 tool call、闭集硬闸、下发。">
 <defs><marker id="fb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
 <path d="M0 0 L10 5 L0 10 z" fill="var(--d-line)"/></marker></defs>
-<rect x="50" y="26" width="380" height="46" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.2"/><text x="66" y="46" font-family="Manrope, PingFang SC, sans-serif" font-size="13.5" font-weight="700" fill="var(--body)">入口 POST /api/run</text><text x="66" y="63" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">收到一句用户原话</text>
-<rect x="50" y="86" width="380" height="46" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.2"/><text x="66" y="106" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--muted)" font-weight="500">①</text><text x="92" y="106" font-family="Manrope, PingFang SC, sans-serif" font-size="13.5" font-weight="700" fill="var(--body)">Query 切分</text><text x="66" y="123" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">按标点和动词把一句话拆成 N 个串行任务</text>
-<rect x="50" y="146" width="380" height="46" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.2"/><text x="66" y="166" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--muted)" font-weight="500">②</text><text x="92" y="166" font-family="Manrope, PingFang SC, sans-serif" font-size="13.5" font-weight="700" fill="var(--body)">安全语义门</text><text x="66" y="183" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">判断这句话该不该真的执行</text>
+<rect x="50" y="26" width="380" height="46" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.2"/><text x="66" y="46" font-family="Manrope, PingFang SC, sans-serif" font-size="13.5" font-weight="700" fill="var(--body)">入口 · WebSocket 音频流</text><text x="66" y="63" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">判停后 commit 一轮音频</text>
+<rect x="50" y="86" width="380" height="46" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.2"/><text x="66" y="106" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--muted)" font-weight="500">①</text><text x="92" y="106" font-family="Manrope, PingFang SC, sans-serif" font-size="13.5" font-weight="700" fill="var(--body)">ASR Head 切分</text><text x="66" y="123" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">模型自己划出 N 个 task，各带 query 和 span</text>
+<rect x="50" y="146" width="380" height="46" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.2"/><text x="66" y="166" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--muted)" font-weight="500">②</text><text x="92" y="166" font-family="Manrope, PingFang SC, sans-serif" font-size="13.5" font-weight="700" fill="var(--body)">安全语义</text><text x="66" y="183" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">写在 system prompt 里，由模型执行</text>
 <rect x="50" y="206" width="380" height="46" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.2"/><text x="66" y="226" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--muted)" font-weight="500">③</text><text x="92" y="226" font-family="Manrope, PingFang SC, sans-serif" font-size="13.5" font-weight="700" fill="var(--body)">一级 Head</text><text x="66" y="243" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">22 选 1：对话 / 导航 Agent / 20 个工具大类</text>
 <rect x="50" y="286" width="380" height="46" rx="8" fill="var(--d-box)" stroke="var(--accent)" stroke-width="1.6"/><text x="66" y="306" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--accent)" font-weight="500">STEP 1</text><text x="124" y="306" font-family="Manrope, PingFang SC, sans-serif" font-size="13.5" font-weight="700" fill="var(--ink)">按大类取候选</text><text x="66" y="323" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">climate → 18 个工具</text>
-<rect x="50" y="346" width="380" height="46" rx="8" fill="var(--d-box)" stroke="var(--accent)" stroke-width="1.6"/><text x="66" y="366" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--accent)" font-weight="500">STEP 2</text><text x="124" y="366" font-family="Manrope, PingFang SC, sans-serif" font-size="13.5" font-weight="700" fill="var(--ink)">压成精简 schema</text><text x="66" y="383" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">18 条 → 2482 字符</text>
-<rect x="50" y="406" width="380" height="46" rx="8" fill="var(--d-box)" stroke="var(--hot)" stroke-width="2"/><text x="66" y="426" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--hot)" font-weight="500">STEP 3</text><text x="124" y="426" font-family="Manrope, PingFang SC, sans-serif" font-size="13.5" font-weight="700" fill="var(--ink)">二级 Head</text><text x="66" y="443" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">18 选 1 → conditioner_temperature</text>
-<rect x="50" y="466" width="380" height="46" rx="8" fill="var(--d-box)" stroke="var(--accent)" stroke-width="1.6"/><text x="66" y="486" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--accent)" font-weight="500">STEP 4</text><text x="124" y="486" font-family="Manrope, PingFang SC, sans-serif" font-size="13.5" font-weight="700" fill="var(--ink)">从原话抠参数</text><text x="66" y="503" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">6 条正则 → ["set","24度"]</text>
-<rect x="50" y="526" width="380" height="46" rx="8" fill="var(--d-box)" stroke="var(--accent)" stroke-width="1.6"/><text x="66" y="546" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--accent)" font-weight="500">STEP 5</text><text x="124" y="546" font-family="Manrope, PingFang SC, sans-serif" font-size="13.5" font-weight="700" fill="var(--ink)">拼成 tool call</text><text x="66" y="563" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">工具名 + 参数</text>
-<rect x="50" y="586" width="380" height="46" rx="8" fill="var(--d-box)" stroke="var(--accent)" stroke-width="1.6" stroke-dasharray="6 4"/><text x="66" y="606" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--accent)" font-weight="500">STEP 6</text><text x="124" y="606" font-family="Manrope, PingFang SC, sans-serif" font-size="13.5" font-weight="700" fill="var(--ink)">下发</text><text x="66" y="623" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">执行端写状态，返回回执</text>
-<rect x="50" y="646" width="380" height="46" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.2"/><text x="66" y="666" font-family="Manrope, PingFang SC, sans-serif" font-size="13.5" font-weight="700" fill="var(--body)">记 trace，处理下一个任务</text><text x="66" y="683" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">全部任务跑完后一次性返回整个 JSON</text>
+<rect x="50" y="346" width="380" height="46" rx="8" fill="var(--d-box)" stroke="var(--accent)" stroke-width="1.6"/><text x="66" y="366" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--accent)" font-weight="500">STEP 2</text><text x="124" y="366" font-family="Manrope, PingFang SC, sans-serif" font-size="13.5" font-weight="700" fill="var(--ink)">压成一行一个工具</text><text x="66" y="383" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">18 行 → 970 字符</text>
+<rect x="50" y="406" width="380" height="46" rx="8" fill="var(--d-box)" stroke="var(--hot)" stroke-width="2"/><text x="66" y="426" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--hot)" font-weight="500">STEP 3</text><text x="124" y="426" font-family="Manrope, PingFang SC, sans-serif" font-size="13.5" font-weight="700" fill="var(--ink)">模型选工具并写参数</text><text x="66" y="443" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">§call conditioner_temperature set 24§</text>
+<rect x="50" y="466" width="380" height="46" rx="8" fill="var(--d-box)" stroke="var(--accent)" stroke-width="1.6"/><text x="66" y="486" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--accent)" font-weight="500">STEP 4</text><text x="124" y="486" font-family="Manrope, PingFang SC, sans-serif" font-size="13.5" font-weight="700" fill="var(--ink)">切出 tool call</text><text x="66" y="503" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">正则 + split → name, args</text>
+<rect x="50" y="526" width="380" height="46" rx="8" fill="var(--d-box)" stroke="var(--accent)" stroke-width="1.6"/><text x="66" y="546" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--accent)" font-weight="500">STEP 5</text><text x="124" y="546" font-family="Manrope, PingFang SC, sans-serif" font-size="13.5" font-weight="700" fill="var(--ink)">闭集硬闸 + 参数校正</text><text x="66" y="563" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">越界回一张带自救说明的失败回执</text>
+<rect x="50" y="586" width="380" height="46" rx="8" fill="var(--d-box)" stroke="var(--accent)" stroke-width="1.6" stroke-dasharray="6 4"/><text x="66" y="606" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--accent)" font-weight="500">STEP 6</text><text x="124" y="606" font-family="Manrope, PingFang SC, sans-serif" font-size="13.5" font-weight="700" fill="var(--ink)">下发</text><text x="66" y="623" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">car_sim 执行，回执写回模型 KV</text>
+<rect x="50" y="646" width="380" height="46" rx="8" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.2"/><text x="66" y="666" font-family="Manrope, PingFang SC, sans-serif" font-size="13.5" font-weight="700" fill="var(--body)">推进 agenda 下一项</text><text x="66" y="683" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">回执成功才推进；失败停在当前项重试</text>
 <line x1="240" y1="72" x2="240" y2="82" stroke="var(--d-line)" stroke-width="1.3" marker-end="url(#fb)"/>
 <line x1="240" y1="132" x2="240" y2="142" stroke="var(--d-line)" stroke-width="1.3" marker-end="url(#fb)"/>
 <line x1="240" y1="192" x2="240" y2="202" stroke="var(--d-line)" stroke-width="1.3" marker-end="url(#fb)"/>
@@ -300,7 +506,7 @@ tr.dim td{color:var(--muted)}
 <line x1="240" y1="572" x2="240" y2="582" stroke="var(--d-line)" stroke-width="1.3" marker-end="url(#fb)"/>
 <line x1="240" y1="632" x2="240" y2="642" stroke="var(--d-line)" stroke-width="1.3" marker-end="url(#fb)"/>
 <line x1="430" y1="169" x2="486" y2="169" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="4 4" marker-end="url(#fb)"/>
-<rect x="490" y="140" width="340" height="64" rx="8" fill="none" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="4 4" opacity=".8"/><text x="506" y="160" font-family="Manrope, PingFang SC, sans-serif" font-size="12" font-weight="700" fill="var(--muted)">三条非执行分支（本例都没走）</text><text x="506" y="177" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">条件句「如果…就…」→ 不执行，Demo 没有事件监听</text><text x="506" y="193" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">否定句「别开…」→ 抑制　状态询问「开着吗」→ 只读不写</text>
+<rect x="490" y="140" width="340" height="64" rx="8" fill="none" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="4 4" opacity=".8"/><text x="506" y="160" font-family="Manrope, PingFang SC, sans-serif" font-size="12" font-weight="700" fill="var(--muted)">三条非执行分支（本例都没走）</text><text x="506" y="177" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">条件句「如果…就…」→ 归 dialog，没有事件回执</text><text x="506" y="193" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">否定句「别开…」→ 抑制　状态询问「开着吗」→ 只读不写</text>
 <line x1="430" y1="229" x2="486" y2="229" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="4 4" marker-end="url(#fb)"/>
 <rect x="490" y="206" width="340" height="46" rx="8" fill="none" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="4 4" opacity=".8"/><text x="506" y="226" font-family="Manrope, PingFang SC, sans-serif" font-size="12" font-weight="700" fill="var(--muted)">另外两个一级候选（本例都没走）</text><text x="506" y="243" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)">dialog → 直接回一句话　subagent_navigation → 转交导航 Agent</text>
 <line x1="50" y1="268" x2="830" y2="268" stroke="var(--accent)" stroke-width="1" stroke-dasharray="5 4" opacity=".6"/>
@@ -309,20 +515,20 @@ tr.dim td{color:var(--muted)}
 <rect x="50" y="728" width="13" height="13" rx="3" fill="none" stroke="var(--d-line)" stroke-width="1.2"/><text x="72" y="739" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--muted)">编排层的其他任务（本例没走 / 不在本文范围）</text>
 <rect x="400" y="728" width="13" height="13" rx="3" fill="none" stroke="var(--accent)" stroke-width="1.6"/><text x="422" y="739" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--muted)">本文关注的路径</text>
 <rect x="600" y="728" width="13" height="13" rx="3" fill="none" stroke="var(--hot)" stroke-width="2"/><text x="622" y="739" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--muted)">唯一要做判断的一步</text>
-<text x="50" y="768" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--muted)">编排层本身不做任何判断：它只负责按顺序调度，并把上一步的结果交给下一步。上图每个虚线框都是它「本来也能走、这次没走」的岔路。</text>
-<text x="50" y="790" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--muted)">切分出多个任务时，②③ 和六步会对每个任务各跑一遍，严格串行 —— 没有并行。</text>
+<text x="50" y="768" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--muted)">①②③ 不是三次调用：它们全在同一跳里 —— 模型吐出 §intent§ 和 §asr§ 两条标签，编排层只负责把这两条按数量/id/顺序配对校验。</text>
+<text x="50" y="790" font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--muted)">agenda 有多项时，六步对每一项各跑一遍，严格串行 —— 上一项回执成功才切下一项。</text>
 </svg>
 </div>
-<figcaption><b>虚线灰框都是这次没走的岔路。</b>「把空调调到24度」这句话在 ② 被判为「要执行」、在 ③ 被判为 <code>climate</code>,于是一路直下走完六步。换一句话(比如「空调开着吗」),同一个编排层会在 ② 就拐进「只读不写」那条分支,永远走不到 STEP 4 之后。</figcaption>
+<figcaption><b>虚线灰框都是这次没走的岔路。</b>「把空调调到24度」这句话在 ② 被判为「要执行」、在 ③ 被判为 <code>climate</code>,于是一路直下走完六步。换一句话(比如「空调开着吗」),模型在同一跳就会把它归成「只能 <code>§state§</code>、绝不能 <code>call</code>」,永远走不到 STEP 4 之后。</figcaption>
 </figure>
 
 
 
-<h3 style="font-family:'Familjen Grotesk',system-ui,sans-serif;font-size:16px;font-weight:600;color:var(--ink);margin:26px 0 10px">三 · 在获得tool intent后做了什么？</h3>
+<h3 style="font-family:'Familjen Grotesk',system-ui,sans-serif;font-size:16px;font-weight:600;color:var(--ink);margin:26px 0 10px">四 · 在获得tool intent后做了什么？</h3>
 <figure>
 <div class="fig-scroll">
 <svg viewBox="0 0 800 838" role="img"
-     aria-label="六步流程图，每一步标出输入与输出：第一步输入大类名输出十八个候选工具；第二步输入十八个候选输出两千四百八十二字符的候选清单；第三步输入清单与用户原话输出一个工具名；第四步输入原话与该工具的可选值输出两个参数；第五步把工具名与参数拼成 tool call；第六步把 tool call 下发给执行端并拿回一张回执。">
+     aria-label="六步流程图，每一步标出输入与输出：第一步输入大类名输出十八个候选工具；第二步输入十八个候选输出九百七十字符的候选清单；第三步输入清单与任务原文，模型输出一条完整调用；第四步用正则把这条调用切成工具名和参数；第五步核对工具名是否属于当前大类；第六步交给后端执行并拿回一张写回模型的回执。">
 <defs>
   <marker id="fa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
     <path d="M0 0 L10 5 L0 10 z" fill="var(--d-line)"/></marker>
@@ -334,84 +540,83 @@ tr.dim td{color:var(--muted)}
 <text x="146" y="50" font-family="Manrope, PingFang SC, sans-serif" font-size="14.5" font-weight="700" fill="var(--ink)">按大类取候选</text>
 <text x="700" y="50" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)" text-anchor="end">编排层 · 查表</text>
 <text x="88" y="74" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--muted)">输入</text>
-<text x="146" y="74" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--body)">category = "climate"</text>
+<text x="146" y="74" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--body)">intent = "climate"</text>
 <text x="88" y="94" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--accent)">输出</text>
 <text x="146" y="94" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--ink)">18 个候选工具（这一大类的全部成员）</text>
 
 <line x1="400" y1="110" x2="400" y2="146" stroke="var(--d-line)" stroke-width="1.4" marker-end="url(#fa)"/>
-<text x="414" y="132" font-family="Manrope, PingFang SC, sans-serif" font-size="11.5" fill="var(--muted)">把这 18 个裁剪成能塞进 prompt 的形态</text>
+<text x="414" y="132" font-family="Manrope, PingFang SC, sans-serif" font-size="11.5" fill="var(--muted)">把这 18 个渲染成能塞进 prompt 的文本</text>
 
 <!-- STEP 2 -->
 <rect x="70" y="150" width="660" height="82" rx="9" fill="var(--d-box)" stroke="var(--accent)" stroke-width="1.3"/>
 <text x="88" y="174" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--accent)" font-weight="500">STEP 2</text>
-<text x="146" y="174" font-family="Manrope, PingFang SC, sans-serif" font-size="14.5" font-weight="700" fill="var(--ink)">压成精简 schema</text>
-<text x="700" y="174" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)" text-anchor="end">编排层 · 字段裁剪</text>
+<text x="146" y="174" font-family="Manrope, PingFang SC, sans-serif" font-size="14.5" font-weight="700" fill="var(--ink)">压成一行一个工具</text>
+<text x="700" y="174" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)" text-anchor="end">编排层 · 字符串渲染</text>
 <text x="88" y="198" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--muted)">输入</text>
 <text x="146" y="198" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--body)">18 个候选的完整条目</text>
 <text x="88" y="218" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--accent)">输出</text>
-<text x="146" y="218" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--ink)">2482 字符的候选清单（每条只留 4 个字段）</text>
+<text x="146" y="218" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--ink)">970 字符的候选清单（一行一个工具）</text>
 
 <line x1="400" y1="234" x2="400" y2="270" stroke="var(--d-line)" stroke-width="1.4" marker-end="url(#fa)"/>
-<text x="414" y="256" font-family="Manrope, PingFang SC, sans-serif" font-size="11.5" fill="var(--hot)">连同用户原话拼成一条 2482 字符的消息，交给二级 Head</text>
+<text x="414" y="256" font-family="Manrope, PingFang SC, sans-serif" font-size="11.5" fill="var(--hot)">连同任务抬头拼成 1109 字符，写进模型的 KV</text>
 
 <!-- STEP 3 -->
 <rect x="70" y="274" width="660" height="82" rx="9" fill="var(--d-box)" stroke="var(--hot)" stroke-width="1.8"/>
 <text x="88" y="298" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--hot)" font-weight="500">STEP 3</text>
-<text x="146" y="298" font-family="Manrope, PingFang SC, sans-serif" font-size="14.5" font-weight="700" fill="var(--ink)">二级 Head 闭集选一</text>
-<text x="700" y="298" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--hot)" text-anchor="end">全程唯一可能调模型的一步</text>
+<text x="146" y="298" font-family="Manrope, PingFang SC, sans-serif" font-size="14.5" font-weight="700" fill="var(--ink)">模型吐出工具名和参数</text>
+<text x="700" y="298" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--hot)" text-anchor="end">模型 · 全程唯一判断点</text>
 <text x="88" y="322" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--muted)">输入</text>
-<text x="146" y="322" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--body)">用户原话 + 那 2482 字符</text>
+<text x="146" y="322" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--body)">task query + 那 970 字符</text>
 <text x="88" y="342" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--hot)">输出</text>
-<text x="146" y="342" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--ink)">1 个工具名 conditioner_temperature</text>
+<text x="146" y="342" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--ink)">§call conditioner_temperature set 24§</text>
 
 <line x1="400" y1="358" x2="400" y2="394" stroke="var(--d-line)" stroke-width="1.4" marker-end="url(#fa)"/>
-<text x="414" y="380" font-family="Manrope, PingFang SC, sans-serif" font-size="11.5" fill="var(--muted)">拿这个工具认的可选值，回原话里找参数</text>
+<text x="414" y="380" font-family="Manrope, PingFang SC, sans-serif" font-size="11.5" fill="var(--muted)">从生成的文本里把这条动作切出来</text>
 
 <!-- STEP 4 -->
 <rect x="70" y="398" width="660" height="82" rx="9" fill="var(--d-box)" stroke="var(--accent)" stroke-width="1.3"/>
 <text x="88" y="422" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--accent)" font-weight="500">STEP 4</text>
-<text x="146" y="422" font-family="Manrope, PingFang SC, sans-serif" font-size="14.5" font-weight="700" fill="var(--ink)">从原话里抠参数</text>
-<text x="700" y="422" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)" text-anchor="end">编排层 · 6 条正则依次跑</text>
+<text x="146" y="422" font-family="Manrope, PingFang SC, sans-serif" font-size="14.5" font-weight="700" fill="var(--ink)">切出 tool call</text>
+<text x="700" y="422" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)" text-anchor="end">编排层 · 一条正则 + 一次 split</text>
 <text x="88" y="446" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--muted)">输入</text>
-<text x="146" y="446" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--body)">用户原话 + choices = ["set","inc","dec"]</text>
+<text x="146" y="446" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--body)">模型生成的那段文本流</text>
 <text x="88" y="466" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--accent)">输出</text>
-<text x="146" y="466" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--ink)">2 个参数 ["set", "24度"]</text>
+<text x="146" y="466" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--ink)">name = conditioner_temperature, args = ["set","24"]</text>
 
 <line x1="400" y1="482" x2="400" y2="518" stroke="var(--d-line)" stroke-width="1.4" marker-end="url(#fa)"/>
-<text x="414" y="504" font-family="Manrope, PingFang SC, sans-serif" font-size="11.5" fill="var(--muted)">把工具名和参数放进同一个对象</text>
+<text x="414" y="504" font-family="Manrope, PingFang SC, sans-serif" font-size="11.5" fill="var(--muted)">执行前核对：这个名字在不在当前大类里</text>
 
 <!-- STEP 5 -->
-<rect x="70" y="522" width="660" height="82" rx="9" fill="var(--accent)" opacity=".1"/>
-<rect x="70" y="522" width="660" height="82" rx="9" fill="none" stroke="var(--accent)" stroke-width="2"/>
+<rect x="70" y="522" width="660" height="82" rx="9" fill="var(--d-box)" stroke="var(--accent)" stroke-width="1.3"/>
 <text x="88" y="546" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--accent)" font-weight="500">STEP 5</text>
-<text x="146" y="546" font-family="Manrope, PingFang SC, sans-serif" font-size="14.5" font-weight="700" fill="var(--accent)">拼成 tool call</text>
-<text x="700" y="546" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)" text-anchor="end">编排层 · 无新逻辑</text>
+<text x="146" y="546" font-family="Manrope, PingFang SC, sans-serif" font-size="14.5" font-weight="700" fill="var(--ink)">闭集硬闸 + 参数校正</text>
+<text x="700" y="546" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)" text-anchor="end">编排层 · 只拦截，不生产</text>
 <text x="88" y="570" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--muted)">输入</text>
-<text x="146" y="570" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--body)">STEP 3 的工具名 + STEP 4 的参数</text>
-<text x="88" y="590" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--accent)">输出</text>
-<text x="146" y="590" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--ink)">{ tool: "conditioner_temperature", parameters: ["set","24度"] }</text>
+<text x="146" y="570" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--body)">name + args</text>
+<text x="88" y="590" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--muted)">输出</text>
+<text x="146" y="590" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--ink)">放行 → 执行　或　一张带自救说明的失败回执</text>
 
 <line x1="400" y1="606" x2="400" y2="642" stroke="var(--d-line)" stroke-width="1.4" marker-end="url(#fa)"/>
-<text x="414" y="628" font-family="Manrope, PingFang SC, sans-serif" font-size="11.5" fill="var(--muted)">把这个对象交给执行端，换一张回执回来</text>
+<text x="414" y="628" font-family="Manrope, PingFang SC, sans-serif" font-size="11.5" fill="var(--muted)">交给后端 car_sim 执行，换一张回执回来</text>
 
 <!-- STEP 6 -->
 <rect x="70" y="646" width="660" height="82" rx="9" fill="var(--d-box)" stroke="var(--d-line)" stroke-width="1.5" stroke-dasharray="6 4"/>
 <text x="88" y="670" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--body)" font-weight="500">STEP 6</text>
 <text x="146" y="670" font-family="Manrope, PingFang SC, sans-serif" font-size="14.5" font-weight="700" fill="var(--ink)">下发</text>
-<text x="700" y="670" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)" text-anchor="end">执行端 · Demo 里是模拟器</text>
+<text x="700" y="670" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--muted)" text-anchor="end">后端 car_sim · 权威执行</text>
 <text x="88" y="694" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--muted)">输入</text>
-<text x="146" y="694" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--body)">工具对象 + 参数数组（一次进程内函数调用）</text>
+<text x="146" y="694" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--body)">name + args —— 模型原样给的 parts[1:]</text>
 <text x="88" y="714" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--body)">输出</text>
-<text x="146" y="714" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--ink)">回执 { ok:true, previous, current, receipt }</text>
+<text x="146" y="714" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--ink)">回执 { 结果, 部件, 现态 } → 写回模型 KV</text>
 
 <line x1="70" y1="758" x2="730" y2="758" stroke="var(--rule)" stroke-width="1"/>
 <rect x="70" y="774" width="13" height="13" rx="3" fill="none" stroke="var(--accent)" stroke-width="1.4"/>
 <text x="92" y="785" font-family="Manrope, PingFang SC, sans-serif" font-size="11.5" fill="var(--muted)">编排层自己完成，纯代码</text>
 <rect x="300" y="774" width="13" height="13" rx="3" fill="none" stroke="var(--hot)" stroke-width="1.8"/>
-<text x="322" y="785" font-family="Manrope, PingFang SC, sans-serif" font-size="11.5" fill="var(--muted)">要做一次判断（模型 或 离线打分器）</text>
+<text x="322" y="785" font-family="Manrope, PingFang SC, sans-serif" font-size="11.5" fill="var(--muted)">模型做判断</text>
 <rect x="580" y="774" width="13" height="13" rx="3" fill="none" stroke="var(--d-line)" stroke-width="1.5" stroke-dasharray="4 3"/>
-<text x="602" y="785" font-family="Manrope, PingFang SC, sans-serif" font-size="11.5" fill="var(--muted)">执行端</text>
-<text x="70" y="814" font-family="Manrope, PingFang SC, sans-serif" font-size="11.5" fill="var(--muted)">收窄由代码强制：判别方在 STEP 3 只能看见那 18 条，看不到另外 530 个工具。</text>
+<text x="602" y="785" font-family="Manrope, PingFang SC, sans-serif" font-size="11.5" fill="var(--muted)">后端执行端</text>
+<text x="70" y="814" font-family="Manrope, PingFang SC, sans-serif" font-size="11.5" fill="var(--muted)">收窄由代码强制：模型在 STEP 3 只能看见那 18 行，看不到另外 528 个工具。</text>
 </svg>
 </div>
 </figure>
@@ -422,12 +627,17 @@ tr.dim td{color:var(--muted)}
 
 <!-- ==================== STEP 1 ==================== -->
 <details class="stepcard">
-<summary><span class="stepnum">STEP 1</span><span class="steptitle">按大类取候选:548 → 18</span></summary>
+<summary><span class="stepnum">STEP 1</span><span class="steptitle">按大类取候选:546 → 18</span></summary>
 <div class="cbody">
 <p class="who">谁在做 &nbsp;<b>编排层</b>&nbsp;·&nbsp; 一行查表,不做判断</p>
-<p>一级 Head 给了 <code>category = "climate"</code>。编排层拿这个字符串去查一张启动时就建好的表,取出这一类的<strong>全部</strong>成员。</p>
+<p>第一跳模型已经把整轮话拆成了一张 agenda,当前这一项的标签是 <code>climate</code>。编排层拿这个字符串去查一张<strong>进程启动时就建好的表</strong>,取出这一类的<strong>全部</strong>成员。</p>
+<pre><span class="c">// streaming/nonrag_agent_backend.py · _current_task_context</span>
+intent = task[<span class="c">"intent"</span>]              <span class="c"># "climate"</span>
+<span class="c">if</span> intent <span class="c">in</span> GROUPS:
+    s.active_group = intent          <span class="hi"># ← 闭集边界从这一行开始生效</span>
+    block = s.catalog.render_group(intent)</pre>
 <div class="io">
-  <div class="in"><div class="lab">输入</div><pre>category = "climate"</pre></div>
+  <div class="in"><div class="lab">输入</div><pre>intent = "climate"</pre></div>
   <div class="out"><div class="lab">输出 · 18 个候选</div><pre>conditioner_switch              空调开/关
 conditioner_child_lock_switch   空调儿童锁开/关
 conditioner_vent_switch         空调出风口开/关
@@ -447,153 +657,475 @@ fridge_mode                     车载冷暖箱的工作模式开/关
 fridge_continue_work_time       调冷暖箱离车后持续工作时长
 fridge_temperature              车载冷暖箱的温度</pre></div>
 </div>
-<p><code>climate</code> 即<strong>「温度与香氛」</strong>,里面装着空调 7 个、香氛 4 个、冷暖箱 6 个、杯托 1 个。<strong>同一类里有两个「温度」</strong> —— <code>conditioner_temperature</code> 和 <code>fridge_temperature</code>,可选值还完全一样。下一步要在这两个之间分清楚。</p>
+<p><code>climate</code> 即<strong>「温度与香氛」</strong>,里面装着空调 7 个、香氛 4 个、冷暖箱 6 个、杯托 1 个。<strong>同一类里有两个「温度」</strong> —— <code>conditioner_temperature</code> 和 <code>fridge_temperature</code>,参数形态还完全一样。下一步要在这两个之间分清楚。</p>
 
 <details><summary>起点那个 climate 是怎么判出来的</summary><div class="dinner">
-<p>一级 Head 的候选清单一共 <b>22 项</b>,而且是<b>拉平的</b>:</p>
+<p>一轮对话的<b>第一跳</b>,模型必须<b>同跳、按顺序</b>吐出两条标签,一条都不能少:</p>
+<pre>§intent climate§
+§asr {"transcript":"把空调调到24度","tasks":[
+      {"id":"task-1","query":"把空调调到24度","span":[0,8]}]}§</pre>
+<p>前一条是 <b>Intent Head</b>,给出整轮的<b>有序 agenda</b>;后一条是 <b>ASR Head</b>,给出逐字转写和每个任务的原文切片。多任务时是这样:</p>
+<pre>用户: 打开空调，播放音乐，然后导航回家
+
+§intent climate,audio,subagent_navigation§
+§asr {"transcript":"打开空调，播放音乐，然后导航回家","tasks":[
+      {"id":"task-1","query":"打开空调","span":[0,4]},
+      {"id":"task-2","query":"播放音乐","span":[5,9]},
+      {"id":"task-3","query":"导航回家","span":[12,16]}]}§</pre>
+<p><b>标签只能来自一张 22 项的表</b>,由 <code>CATALOG.taxonomy_prompt()</code> 渲染进 system prompt:</p>
 <ul>
 <li><code>dialog</code>(1 个)—— 闲聊、问答,不执行任何动作</li>
-<li><code>subagent_navigation</code>(1 个)—— 导航、行程规划,转交给导航 Agent</li>
+<li><code>subagent_navigation</code>(1 个)—— 地点、路线、沿途任务,交给导航 Agent</li>
 <li><b>20 个工具大类</b> —— <code>climate</code>、<code>audio</code>、<code>doors_windows</code>…</li>
 </ul>
-<p>所以<b>没有一个单独的「这是不是控车」的判断步骤</b> </p>
-
-<p><b>Head 1 的输入:</b></p>
-<pre>query  = "把空调调到24度"
-labels = 22 个候选，每个只有 3 个字段：
-  { id: "dialog",  label: "对话",     description: "闲聊、知识问答、无需执行动作的请求" }
-  { id: "screens", label: "座舱屏幕",  description: "中控、副驾、仪表、吸顶、扶手…" }
-  <span class="hi">{ id: "climate", label: "温度与香氛", description: "空调、冷暖箱、杯托、香氛和空气环境" }</span>
-  … 共 22 条
-
-<span class="hot">← 注意：这里面一个工具都没有。Head 1 看不见 548 个工具中的任何一个。</span></pre>
-<p><b>输出:</b><code>{ category: "climate", kind: "tool", confidence: 0.99 }</code></p>
-
-<p><b>怎么判出 climate 的:</b>默认走离线打分器(见开头「名词解释 · 判别方」)。每个大类都配了一张<b>手写的关键词表</b>,<code>climate</code> 这张是 <code>["空调","温度","风量","制冷","制热","香氛","冷暖箱","杯托"]</code>。分数由两项相加:</p>
-<pre>climate 温度与香氛
-  ① 关键词表命中     「空调」在原话里出现 1 次      ×3    = 3
-  ② 组内工具的措辞    这 18 个工具的分类名/描述里,
-                     有 7 条整串出现在原话里        ×0.12 = 0.84
-                     ─────────────────────────────  合计 <span class="hi">3.84</span>
-其余 19 个大类        两项都一个字没命中             合计 <span class="c">0</span></pre>
-<p>第 ② 项那 7 次是这么来的:这 18 个工具里有 <b>7 个的分类名就是「空调」</b>(空调开关、空调温度、空调风量…),原话里有「空调」,于是这 7 条各命中一次。<b>权重只有 0.12</b>,7 次加起来才 0.84 —— 还不到关键词表命中一次(3 分)的三分之一。这个比例是刻意压低的:<b>大类归属主要由人写的关键词表决定,工具自己的措辞只做微调</b>,否则工具条数多的大类会仅凭数量堆出高分。</p>
-<p><b>然后还要过一道门:</b>大类得分加上「动作词得分」(句子里有没有「打开/关闭/调/设置」这类词),<b>合计要 ≥ 2.5</b> 才认定这是控车,否则一律归到 <code>dialog</code>。本例 <code>3.84 + 3.0 = 6.84</code>,远超阈值。</p>
+<p>这张表<b>一个工具名都没有</b> —— 第一跳看不见那 546 个工具中的任何一个。</p>
+<div class="note key">
+<h4>两条标签必须严格对得上，对不上直接拒绝</h4>
+<p><code>bind_verified_agenda()</code> 逐项核三件事:<b>数量相同</b>、<b>id 必须是 task-1..N 且顺序一致</b>、<b>非 dialog 的 query 不能为空</b>。任一条不满足就抛错,编排层回一条 <code>_protocol_failure</code> 给模型重来,<b>不会带着半张 agenda 往下走</b>。</p>
+</div>
+<p><b>安全语义也写在这一跳的 system prompt 里</b>,由模型自己执行,不是编排层的代码:</p>
+<div class="scroller"><table>
+<thead><tr><th>用户说</th><th>规则</th></tr></thead>
+<tbody>
+<tr><td>「别开空调」</td><td>否定修饰的动作<b>不是待执行任务</b>,不得为它输出工具标签或 call</td></tr>
+<tr><td>「如果下雨就关窗」</td><td>没有事件回执的条件任务归 <code>dialog</code>,说明无法立即执行</td></tr>
+<tr><td>「空调开着吗」</td><td>仍输出 <code>climate</code>,但后续<b>只能用 <code>§state§</code>,绝不能 <code>call</code></b></td></tr>
+</tbody></table></div>
+<p>所以<b>没有一个单独的「这是不是控车」的判断步骤</b>,也<b>没有任何打分或阈值</b> —— 这一跳整个在模型里完成,编排层只做协议校验。</p>
 </div></details>
 
 <details><summary>这张 18 个的表是怎么来的</summary><div class="dinner">
-<p>进程启动时读一次工具目录(547 个工具)加一个内置工具,共 548 个,然后按大类分桶:</p>
-<pre><span class="c">const</span> byGroup = <span class="c">new</span> Map(Object.keys(TOOL_GROUPS).map((g) =&gt; [g, []]));
-<span class="c">for</span> (<span class="c">const</span> tool <span class="c">of</span> tools) byGroup.get(tool.group).push(tool);</pre>
-<p>之后每次请求就只是 <code>byGroup.get("climate")</code>,一次查表。<b>没有搜索、没有相关性排序、没有 top-k</b> —— 拿到的是这一类的全部 18 个,一个不多一个不少。</p>
+<p>进程启动时读一次工具目录(<code>data/tools_manifest.json</code>,<b>546 个工具</b>),按大类分成 20 个桶:</p>
+<pre><span class="c"># streaming/group_catalog.py · ClosedSetCatalog.__init__</span>
+self.by_group = {group: [] <span class="c">for</span> group <span class="c">in</span> GROUPS}      <span class="c"># 20 个空桶</span>
+<span class="c">for</span> tool <span class="c">in</span> tools:
+    <span class="c">if</span> tool.group <span class="c">not in</span> self.by_group:
+        <span class="hot">raise ValueError(f"manifest contains unknown group: {tool.group}")</span>
+    self.by_group[tool.group].append(tool)</pre>
+<p>每个工具的大类由 <code>classify_tool_group(item)</code> 算出来,<b>算不出来就直接抛错</b> —— 目录里不允许存在归不了类的工具,闭集这件事在<b>加载时</b>就被强制了。</p>
+<p>之后每次请求就只是 <code>self.by_group["climate"]</code>,一次查表。<b>没有搜索、没有相关性排序、没有 top-k</b> —— 拿到的是这一类的全部 18 个,一个不多一个不少。</p>
 </div></details>
 </div>
 </details>
 
 <!-- ==================== STEP 2 ==================== -->
 <details class="stepcard">
-<summary><span class="stepnum">STEP 2</span><span class="steptitle">压成精简 schema:每个工具只留 4 个字段</span></summary>
+<summary><span class="stepnum">STEP 2</span><span class="steptitle">压成一行一个工具:18 行 / 970 字符</span></summary>
 <div class="cbody">
-<p class="who">谁在做 &nbsp;<b>编排层</b>&nbsp;·&nbsp; 纯字段裁剪,不做判断</p>
-<p>工具在目录里的原始条目字段更多。要交给 STEP 3 判断之前先裁一遍,只留判断真正用得上的:<strong>名字、类别、描述、参数形态、可选值</strong>。</p>
+<p class="who">谁在做 &nbsp;<b>编排层</b>&nbsp;·&nbsp; 纯字符串渲染,不做判断</p>
+<p>18 个工具对象要变成一段能塞进 prompt 的文本。渲染规则只有一行:</p>
+<pre><span class="c"># streaming/group_catalog.py · ToolSchema.prompt_line</span>
+params = <span class="c">"；"</span>.join(self.raw_params) <span class="c">if</span> self.raw_params <span class="c">else</span> <span class="c">"无参数"</span>
+<span class="c">return</span> f<span class="hi">"§{self.name} {params}§ — {self.description}"</span></pre>
 <div class="io">
   <div class="in"><div class="lab">输入 · 目录里的原始条目</div><pre>{
   "name": "conditioner_temperature",
-  "category": "空调",
-  <span class="c">"group": "climate",              ← 裁掉，上一步已经确定了</span>
   "description": "调空调温度",
-  <span class="c">"widget": "adjuster",            ← 裁掉，是给前端渲染用的</span>
-  "primaryChoices": ["set","inc","dec"],
-  "secondaryChoices": [],
-  "rawParams": ["set|inc|dec", "Pos?"]
+  "raw_params": ["set|inc|dec", "Pos?"],
+  <span class="c">"category": "空调",       ← 不进这一行</span>
+  <span class="c">"group": "climate"        ← 不进这一行，上一步已经确定了</span>
 }</pre></div>
-  <div class="out"><div class="lab">输出 · 裁剪后</div><pre>{
-  "name": "conditioner_temperature",
-  "category": "空调",
-  "description": "调空调温度",
-  "parameters": ["set|inc|dec", "Pos?"],
-  "choices": ["set", "inc", "dec"]
-}</pre></div>
+  <div class="out"><div class="lab">输出 · 一行</div><pre><span class="hi">§conditioner_temperature set|inc|dec；Pos?§ — 调空调温度</span></pre></div>
 </div>
-<p>18 条这样的条目拼成一个清单,<strong>总共 2482 个字符</strong>。这就是 STEP 3 能看到的全部候选信息。</p>
+
+<div class="note key">
+<h4>Schema 的形状，就是调用的形状</h4>
+<p>注意这一行两头也是 <code>§ §</code>,和模型待会儿要吐的调用<b>长得一模一样</b>。模型要做的只是<b>把参数位换成真值</b>:</p>
+<pre>看到  §conditioner_temperature <span class="c">set|inc|dec；Pos?</span>§ — 调空调温度
+吐出  §call conditioner_temperature <span class="hi">set 24</span>§</pre>
+<p>所以这条路上<b>不需要另外教模型输出格式</b> —— 格式就长在候选清单里,每一行都是一次示范。</p>
+</div>
+
+<p>18 行拼上一个抬头,<strong>总共 970 个字符</strong>。这就是模型在这一跳能看到的<b>全部</b>候选信息:</p>
+<pre>【当前任务工具大类：温度与香氛 / climate】
+空调、冷暖箱、杯托、香氛和空气环境。只能调用下列静态 Schema；不得创造工具名：
+§conditioner_switch on|off；Pos?§ — 空调开/关
+§conditioner_child_lock_switch on|off；Pos?§ — 空调儿童锁开/关
+§conditioner_vent_switch on|off；Pos?§ — 空调出风口开/关
+§conditioner_mode on|off；43opts；Pos?§ — 空调的工作模式
+§conditioner_wind_direction on|off；23opts；Pos?§ — 空调的吹风模式(风向)
+<span class="hi">§conditioner_temperature set|inc|dec；Pos?§ — 调空调温度</span>
+§conditioner_speed set|inc|dec；Pos?§ — 调空调风量
+§cupholder_mode on|off；Pos?；制冷|制热§ — 杯托指定工作模式开/关
+§fragrance_switch on|off；Pos?§ — 车载香氛开/关
+§fragrance_density set|inc|dec；Pos?；mode:str?§ — 调车载香氛的浓度
+§fragrance_type on|off；Pos?；37opts?§ — 调车载香氛的香型或味道
+<span class="c">§fragrance_random_change 无参数§ — 随机切换香氛味道</span>
+§fridge_switch on|off§ — 车载冷暖箱开/关
+§fridge_door_switch on|off§ — 车载冷暖箱箱门开/关
+§fridge_childlock_switch on|off§ — 车载冷暖箱儿童锁开/关
+§fridge_mode on|off；制冷|制热|急速制冷|保温|快捷|消毒|定时工作|持续工作|香槟红酒|冰镇饮料§ — 车载冷暖箱的工作模式开/关
+§fridge_continue_work_time set|inc|dec；Pos?§ — 调车载冷暖箱在车主离车后持续工作的时长
+§fridge_temperature set|inc|dec§ — 车载冷暖箱的温度</pre>
+<p>枚举太长的用<b>计数占位</b>(<code>43opts</code>、<code>37opts?</code>)顶掉,尾巴带 <code>?</code> 的表示可选。没有参数的写「无参数」。</p>
 
 <details><summary>为什么大类必须控制在 40 个工具以内</summary><div class="dinner">
-<p>因为这份清单是<b>整个塞进 prompt</b> 的。</p>
-<p>18 个工具 = 2482 字符。如果一个大类有 141 个工具,这里就会膨胀到一万多字符 —— 又慢又容易判错。</p>
-<p><b>「每类不超过 40 个」是为了不超出窗口大小。</b></p>
+<p>因为这份清单是<b>整个塞进 prompt</b> 的,而且<b>每切一次 agenda 项就要塞一次</b>。</p>
+<div class="scroller"><table>
+<thead><tr><th>大类</th><th>工具数</th><th>渲染出来</th></tr></thead>
+<tbody>
+<tr class="win"><td><code>climate</code></td><td>18</td><td>970 字符</td></tr>
+<tr><td><code>mirrors_cameras</code>(现在最大的一类)</td><td>40</td><td>2773 字符</td></tr>
+<tr class="dim"><td>假设有一类装 141 个</td><td>141</td><td>约一万字符</td></tr>
+</tbody></table></div>
+<p><b>「每类不超过 40 个」是为了让这段注入稳定在三千字符以内。</b>再往上,既拖首字延迟,也让模型在长清单里更容易看错行。</p>
+<p>代码里还留了一条泄压阀:注入这段 Schema 时标了 <code>droppable</code>,<b>允许引擎在轮末把它从 KV 里淘汰</b>(执行回执则保留)—— 大类 Schema 是短期工作集,用完就可以扔。</p>
 </div></details>
 
-<details><summary>模型最后拿到的整个 prompt，一字不差</summary><div class="dinner">
-<p>这是<b>发出去的完整 HTTP 请求体</b>。总共 3216 字符,没有任何省略:</p>
-<pre>POST {LLM_BASE_URL}/chat/completions
-authorization: Bearer {LLM_API_KEY}
+<details><summary>模型这一跳完整收到的文本，一字不差</summary><div class="dinner">
+<p>不只有上面那 970 字符。编排层在每个大类块<b>前面</b>还钉一个<b>任务边界抬头</b>,防止模型跨任务乱答:</p>
+<pre><span class="hi">【当前 Agenda 任务】
+id: task-1
+query: "把空调调到24度"
+span: [0, 8]
+source: logical_asr_head
+asr_verified: true
+硬约束：只处理上述 task query；不得退回整轮音频猜测其他任务。</span>
 
-{
-  "model": <span class="c">"{LLM_MODEL}"</span>,
-  "temperature": <span class="hi">0</span>,
-  "response_format": { "type": <span class="hi">"json_object"</span> },
-  "messages": [
-    { "role": <span class="hot">"system"</span>, "content": <span class="c">"…119 字符，见下…"</span> },
-    { "role": <span class="hot">"user"</span>,   "content": <span class="c">"…2482 字符，见下…"</span> }
-  ]
-}</pre>
-
-<p><b>system 消息</b> —— 119 个字符,写死在代码里,每次都一样:</p>
-<pre>你是 Tool Head。只能从给定 Tool Schema 中选择一个工具，不得创造工具名。提取参数时只能使用 schema 给出的枚举或用户明确给出的数值。返回 JSON: {tool, confidence, rationale}。</pre>
-
-<p><b>user 消息</b> —— 2482 个字符。<b>实际是紧凑的一整行 JSON</b>,下面为了能看清做了换行,内容一个字没改:</p>
-<pre>{"query":<span class="hot">"把空调调到24度"</span>,"tool_schemas":[
-{"name":"conditioner_switch","category":"空调","description":"空调开/关","parameters":["on|off","Pos?"],"choices":["on","off"]},
-{"name":"conditioner_child_lock_switch","category":"空调","description":"空调儿童锁开/关","parameters":["on|off","Pos?"],"choices":["on","off"]},
-{"name":"conditioner_vent_switch","category":"空调","description":"空调出风口开/关","parameters":["on|off","Pos?"],"choices":["on","off"]},
-{"name":"conditioner_mode","category":"空调","description":"空调的工作模式","parameters":["on|off","43opts","Pos?"],"choices":["on","off"]},
-{"name":"conditioner_wind_direction","category":"空调","description":"空调的吹风模式(风向)","parameters":["on|off","23opts","Pos?"],"choices":["on","off"]},
-<span class="hi">{"name":"conditioner_temperature","category":"空调","description":"调空调温度","parameters":["set|inc|dec","Pos?"],"choices":["set","inc","dec"]},</span>
-{"name":"conditioner_speed","category":"空调","description":"调空调风量","parameters":["set|inc|dec","Pos?"],"choices":["set","inc","dec"]},
-{"name":"cupholder_mode","category":"杯托","description":"杯托指定工作模式开/关","parameters":["on|off","Pos?","制冷|制热"],"choices":["on","off"]},
-{"name":"fragrance_switch","category":"香氛","description":"车载香氛开/关","parameters":["on|off","Pos?"],"choices":["on","off"]},
-{"name":"fragrance_density","category":"香氛","description":"调车载香氛的浓度","parameters":["set|inc|dec","Pos?","mode:str?"],"choices":["set","inc","dec"]},
-{"name":"fragrance_type","category":"香氛","description":"调车载香氛的香型或味道","parameters":["on|off","Pos?","37opts?"],"choices":["on","off"]},
-{"name":"fragrance_random_change","category":"香氛","description":"随机切换香氛味道",<span class="hot">"parameters":[],"choices":[]</span>},
-{"name":"fridge_switch","category":"冷暖箱","description":"车载冷暖箱开/关","parameters":["on|off"],"choices":["on","off"]},
-{"name":"fridge_door_switch","category":"冷暖箱","description":"车载冷暖箱箱门开/关","parameters":["on|off"],"choices":["on","off"]},
-{"name":"fridge_childlock_switch","category":"冷暖箱","description":"车载冷暖箱儿童锁开/关","parameters":["on|off"],"choices":["on","off"]},
-{"name":"fridge_mode","category":"冷暖箱","description":"车载冷暖箱的工作模式开/关","parameters":["on|off","制冷|制热|急速制冷|保温|快捷|消毒|定时工作|持续工作|香槟红酒|冰镇饮料"],"choices":["on","off","制冷","制热","急速制冷","保温","快捷","消毒","定时工作","持续工作","香槟红酒","冰镇饮料"]},
-{"name":"fridge_continue_work_time","category":"冷暖箱","description":"调车载冷暖箱在车主离车后持续工作的时长","parameters":["set|inc|dec","Pos?"],"choices":["set","inc","dec"]},
-{"name":"fridge_temperature","category":"冷暖箱","description":"车载冷暖箱的温度","parameters":["set|inc|dec"],"choices":["set","inc","dec"]}]}</pre>
-
-
+【当前任务工具大类：温度与香氛 / climate】
+空调、冷暖箱、杯托、香氛和空气环境。只能调用下列静态 Schema；不得创造工具名：
+§conditioner_switch on|off；Pos?§ — 空调开/关
+…（上面那 18 行）…
+§fridge_temperature set|inc|dec§ — 车载冷暖箱的温度</pre>
+<p>抬头 137 字符 + 大类块 970 字符 = <b>1109 字符</b>,作为一条 <code>obs</code> 消息直接写进模型的 KV。</p>
+<p><code>query</code> 和 <code>span</code> 都来自上一跳 ASR Head 自己给的切片 —— <b>模型是在按自己刚才划的边界干活</b>,编排层只是把它固化下来再钉回去。</p>
 </div></details>
 </div>
 </details>
 
 <!-- ==================== STEP 3 ==================== -->
 <details class="stepcard hot">
-<summary><span class="stepnum">STEP 3</span><span class="steptitle">在 18 个里挑一个:18 → 1</span></summary>
+<summary><span class="stepnum">STEP 3</span><span class="steptitle">模型一次吐出工具名和参数</span></summary>
 <div class="cbody">
-<p class="who">谁在做 &nbsp;<b>二级 Head</b>&nbsp;·&nbsp; 本文唯一的判断点</p>
-<p>把上一步那 2482 字符(用户原话就在里面,是其中一个字段)交出去,要一个工具名回来。<strong>只能从这 18 个里选</strong>。</p>
-<p>交给谁,取决于<b>启动时选中的实现</b>:默认是离线打分器,配齐三个环境变量则是模型。两者的输入一模一样,输出的字段也对得上,所以下面并排放。</p>
+<p class="who">谁在做 &nbsp;<b>模型</b>&nbsp;·&nbsp; 本文唯一的判断点</p>
+<p>上一步那 1109 字符进了 KV,模型接着往下生成。<strong>工具名和参数是同一次输出里的同一串文本</strong> —— 不是先选工具再填参数两回事。</p>
 <div class="io">
-  <div class="in"><div class="lab">输入 · 两个实现拿到的完全一样</div><pre>query        = "把空调调到24度"
-tool_schemas = 18 条（2482 字符）</pre></div>
-  <div class="out"><div class="lab">输出 A · 走离线打分器（默认）</div><pre>{
-  tool:       conditioner_temperature,   <span class="c">← 直接是那 18 个对象里的一个</span>
-  confidence: 0.92,                      <span class="c">← 打分器用公式算的</span>
-  alternatives: [                        <span class="c">← 会给出前三名和分数</span>
-    { id: "conditioner_temperature", score: 26 },
-    { id: "conditioner_speed",       score: 14 },
-    { id: "fridge_temperature",      score: 12 }
-  ]
-}</pre></div>
-  <div class="out"><div class="lab">输出 B · 走模型</div><pre>{
-  tool:       conditioner_temperature,
-  confidence: 0.9,                       <span class="c">← 模型进行打分</span>
-  alternatives: [],                      <span class="hot">← 恒为空：模型只被要求返回一个，没有排名</span>
-  rationale:  "……"                       <span class="c">← 模型自己写的一句理由</span>
-}</pre></div>
+  <div class="in"><div class="lab">输入 · 模型手上有的</div><pre>当前 task query：「把空调调到24度」
++ 这个大类的全部 18 条 Tool Schema（含参数形态与枚举）</pre></div>
+  <div class="out"><div class="lab">输出 · 模型直接吐出来的</div><pre><span class="hi">§call conditioner_temperature set 24§</span>
+<span class="c"> |    |                       |
+ |    |                       +--- 参数     ["set", "24"]
+ |    +--- 工具名              conditioner_temperature
+ +--- 动作类型（call / state / intent / asr）</span></pre></div>
 </div>
 
-<p>下面拆的是<strong>输出 A</strong>。打分器给 18 个候选各打一个分,最高分胜出,前三名:</p>
+<p>system prompt 里对这一跳的全部要求,原文:</p>
+<pre>系统每次只给你 agenda 当前项所属大类的全部静态 Tool Schema。系统也给出当前
+task id/query/span；你必须只回答这个 query，不能从整轮音频猜测、合并或改答其他
+task。你只能从当前 Schema 中选择具体工具：
+§call 工具名 参数§   执行（如 §call conditioner_temperature set 23 all§）。
+<span class="hi">参数写法以当前 Schema 为准，枚举值原样照抄。</span>系统执行前会**自动核对该部件当前
+状态**，不必先查再调。**同一 task 的多件事可以一跳连发多个 call**。
+§state 部件或类目§   只在用户**询问状态**时用（"空调开着吗"→ §state 空调§），
+车控操作前不需要它。</pre>
+
+<div class="note key">
+<h4>这里没有置信度、没有备选、没有排名</h4>
+<p>模型交出来的是<b>转写流里的一段文本</b>,不是一个 JSON 对象 —— 结构上就没有地方放分数。整条链路上<b>不存在任何一个数字阈值</b>去卡「这次判得够不够准」。</p>
+<p>编排层拿到这段文本后能做的判断只有一个:<b>这个工具名在不在当前大类的清单里</b>(见 STEP 5)。判不出「选得对不对」,只判得出「越没越界」。</p>
+</div>
+
+<details><summary>同一跳可以连发多个 call</summary><div class="dinner">
+<p>一个 task 里如果有多件事,模型可以一次全吐出来,<b>每个动作独立一对 §§,连着写</b>:</p>
+<pre>§call conditioner_switch on§§call conditioner_temperature set 24§</pre>
+<p>编排层按顺序逐个执行,把回执<b>按序拼成一条</b>再回灌:</p>
+<pre><span class="c"># nonrag_agent_backend.py</span>
+<span class="c">elif</span> all(kind == <span class="c">"call"</span> <span class="c">for</span> kind, _ <span class="c">in</span> acts):
+    obs_parts = []
+    <span class="c">for</span> kind, body <span class="c">in</span> acts:
+        o = <span class="c">await</span> _do_action(s, <span class="c">"call"</span>, body.strip())
+        obs_parts.append(o)
+    obs = <span class="c">"\n"</span>.join(obs_parts)</pre>
+<p>但<b>一跳里不能混着来</b>:要么全是 <code>call</code>,要么只有一个 <code>state</code>。混了就回 <code>invalid_followup_actions</code> 协议失败。</p>
+<p>另外这是<b>同一个 task 内</b>的多个动作。跨 task(比如「开空调 + 放音乐」)是靠 agenda <b>串行推进</b>的 —— 第一项的回执成功了才切到第二项,那时候注入的 Schema 已经换成 <code>audio</code> 那一类了。</p>
+</div></details>
+
+<details><summary>模型有两种吐调用的通道，殊途同归</summary><div class="dinner">
+<div class="scroller"><table>
+<thead><tr><th>通道</th><th>模型怎么给</th><th>编排层怎么拿到</th></tr></thead>
+<tbody>
+<tr><td><b>DSL 标签</b><br><span style="font-size:12.5px;color:var(--muted)">默认</span></td><td>在转写流里直接写 <code>§call 工具名 参数§</code></td><td>一条正则扫出标签,按空格切成工具名 + 参数数组</td></tr>
+<tr><td><b>原生 function calling</b><br><span style="font-size:12.5px;color:var(--muted)">座舱前端 <code>CFG.fc</code> 打开时</span></td><td>走 <code>response.function_call_arguments.done</code>,给的是一个 JSON</td><td><code>JSON.parse</code> 之后按 <code>argmaps[工具名]</code> 排成位置参数</td></tr>
+</tbody></table></div>
+<p>两条最后都汇进同一个 <code>dispatch(name, args, "voice")</code>。<b>无论走哪条,<code>args</code> 里的每一个值都是模型写的。</b></p>
+<p>顺带一个实测细节:FC 模式下音频和对话必须<b>物理隔离成两条连接</b> —— 同一会话只要 commit 过音频 item,后续函数调用决策就被污染(车控话术被发给 <code>cloud_search</code>,删 item 都救不回);纯文本会话则稳定调对。</p>
+</div></details>
+</div>
+</details>
+
+<!-- ==================== STEP 4 ==================== -->
+<details class="stepcard">
+<summary><span class="stepnum">STEP 4</span><span class="steptitle">切出 tool call</span></summary>
+<div class="cbody">
+<p class="who">谁在做 &nbsp;<b>编排层</b>&nbsp;·&nbsp; 一条正则加一次 split,无判断</p>
+<div class="note key">
+<h4>这一步是「拆」，不是「拼」</h4>
+<p>模型给的本来就是完整的一条。编排层要做的是<b>把它从口播文本里切出来、再切成工具名和参数</b> —— 没有任何一个字段是这里生产的。</p>
+</div>
+<p>后端从生成的文本里扫动作标签:</p>
+<pre><span class="c"># nonrag_agent_backend.py</span>
+ACT_RE = re.compile(r<span class="hi">"§?\s*(state|intent|asr|call)\s+([^§]+?)\s*§"</span>)
+
+<span class="c">→ kind = "call"</span>
+<span class="c">→ body = "conditioner_temperature set 24"</span></pre>
+<p>然后一次 <code>split()</code> 就完了:</p>
+<pre>parts = body.split()          <span class="c"># ["conditioner_temperature", "set", "24"]</span>
+name  = parts[0]              <span class="hi"># "conditioner_temperature"</span>
+args  = parts[1:]             <span class="hi"># ["set", "24"]</span></pre>
+<p>不带 <code>§</code> 的文本原样留下,就是要播报给用户听的话(<code>DSL_RE.sub("", text)</code>)。<b>同一段生成里,动作和口播是靠这对 <code>§</code> 分开的。</b></p>
+
+<div class="final">
+<h3>tool call</h3>
+<pre>name = "conditioner_temperature"
+args = ["set", "24"]</pre>
+</div>
+
+<details><summary>为什么开头那个 § 是可选的 —— 一个 400 条连跑的实测</summary><div class="dinner">
+<p>看正则第一个字符:<code>§?</code>,<b>带问号,可有可无</b>。代码注释里记了原因:</p>
+<pre><span class="c"># 开头的 § 是可选的：长会话后模型会漂移成只写收尾 §（实测 400 条连跑到
+# 第 ~250 条起，输出全变成 "call xxx dec§" 缺前导 §，整条被当纯文本口播、
+# 动作发不出去，150 条全军覆没）。尾 § 仍是必须的，靠它划定动作边界，
+# 所以宽容不会把普通口播误吞——口播文本里的 § 早被 DSL_RE 滤掉了。</span></pre>
+<p>这条注释顺带说明了一件事:<b>动作能不能发出去,取决于模型有没有把格式写对</b>。缺一个 <code>§</code>,整条就掉进口播文本里,车一动不动。这是「模型直接吐调用」这个设计要付的代价 —— 换成结构化返回就不会有这个问题,但也就拿不到「Schema 形状即调用形状」那份便宜。</p>
+</div></details>
+
+<details><summary>座舱前端也自己切一遍</summary><div class="dinner">
+<p>后端切出来是为了<b>执行</b>;座舱页面切出来是为了<b>把仪表盘画对</b>。两边看的是同一段文字流,各切各的:</p>
+<pre><span class="c">// public/streaming/omni-app.safe.js</span>
+<span class="c">const</span> DSL_RE = /§\s*([^§]*?)\s*§/g;
+<span class="c">const</span> { name, args } = V2.parseTag(inside);</pre>
+<p>前端多做两道琐碎清洗,后端没有:</p>
+<ul>
+<li><b>滤掉照抄的参数占位符</b> —— 模型有时把 <code>Pos?</code>、<code>color:str?</code>、<code>&lt;param:…&gt;</code> 原样抄进调用里;凡是以 <code>?</code> 结尾、含 <code>:</code>、或以 <code>&lt;</code> 开头的一律丢掉</li>
+<li><b>把位置词挪到末尾</b> —— 模型爱写 <code>set all 23.25</code>,而执行端只认 <code>set</code> 紧跟数值,于是重排成 <code>set 23.25 all</code></li>
+</ul>
+</div></details>
+</div>
+</details>
+
+<!-- ==================== STEP 5 ==================== -->
+<details class="stepcard">
+<summary><span class="stepnum">STEP 5</span><span class="steptitle">闭集硬闸 + 参数校正</span></summary>
+<div class="cbody">
+<p class="who">谁在做 &nbsp;<b>编排层</b>&nbsp;·&nbsp; 只拦截和纠正,不生产参数</p>
+
+<p><strong>第一道,也是唯一一道拦在执行前面的:工具名在不在当前大类里。</strong></p>
+<pre><span class="c"># nonrag_agent_backend.py · _do_action</span>
+allowed = s.catalog.names_for_group(s.active_group)
+<span class="c">if</span> name <span class="c">not in</span> allowed:
+    <span class="c">return</span> json.dumps({<span class="c">"结果"</span>: <span class="hot">"失败"</span>, …})    <span class="hi"># 注意是 return，不是 raise</span></pre>
+
+<div class="note key">
+<h4>越界不是抛异常，是回一张「带自救说明的失败回执」</h4>
+<pre>模型吐    <span class="hot">§call conditioner_power on§</span>
+             ↓  conditioner_power 不在 climate 那 18 个里
+硬闸拦下,回一张失败回执:
+    { "结果": <span class="hot">"失败"</span>,
+      "原因": "conditioner_power 不属于当前闭集大类 climate",
+      <span class="hi">"当前大类工具"</span>: ["conditioner_switch", "conditioner_mode", …],
+      <span class="hi">"现在必须做"</span>: "只从当前系统给出的 Tool Schema 原样选择并重试。" }
+             ↓  这张回执<b>写进模型的 KV</b>
+模型再生成一次   <span class="hi">§call conditioner_switch on§</span>   ← 这就是一次「重试」</pre>
+<p>所以「重试」<b>就是多跟模型交互一轮</b>:失败回执进上下文,模型带着它重新生成。回执里直接把当前大类的工具名列给它,不用它自己猜。</p>
+</div>
+
+<details><summary>「最多 2 次」是写给模型的话，不是代码拦的</summary><div class="dinner">
+<p>system prompt 里那句「失败：按回执给出的当前大类 Schema 改名或改参数重试，<b>最多 2 次</b>」是<b>一条指令</b>,靠模型自己遵守。<b>代码里没有任何计数器去数它重试了几次。</b></p>
+<p>代码里唯一的硬上限是整轮的跳数:</p>
+<pre>MAX_HOPS = int(os.environ.get(<span class="c">"AGENT_MAX_HOPS"</span>, <span class="hi">"10"</span>))
+
+<span class="c">while</span> hops &lt; MAX_HOPS <span class="c">and not</span> s.cancelled:
+    …每回一次模型 hops += 1…</pre>
+<p><b>一轮对话里模型总共最多被回到 10 次</b>,重试也算在这 10 次里面 —— 它和「执行成功后继续下一个 task」共用同一个额度。撞到 10 次就跳出循环,把最后那段文本当口播念出去。</p>
+<div class="note">
+<h4>触发重试的不只是「选错工具」</h4>
+<p><b>任何一张 <code>结果: 失败</code> 的回执都会走同一条路。</b>两个来源:</p>
+<ul>
+<li><b>工具名越界</b> —— 上面那道硬闸</li>
+<li><b>执行失败</b> —— 名字对了但参数不合法,<code>car_sim</code> 自己返回失败</li>
+</ul>
+<p>两种都不推进 agenda(<code>_obs_succeeded()</code> 为 False),模型<b>停在同一个 task、同一份 Schema 上</b>重来。</p>
+</div>
+</div></details>
+
+<p><strong>第二组,座舱前端对模型给的参数做的四道改写。</strong>四道都是在<b>改模型已经填好的值</b>,一道一道看具体在改什么:</p>
+<div class="scroller"><table>
+<thead><tr><th style="width:38px">#</th><th style="width:44%">改写前 → 改写后</th><th>这条规则在干什么</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><div style="line-height:1.9"><span style="color:var(--muted);font-size:12px">模型吐&nbsp;</span> <code>§call <span style="color:var(--hot)">conditioner_power</span> on§</code><br><span style="color:var(--muted);font-size:12px">改写成&nbsp;</span> <code>§call <span style="color:var(--accent)">conditioner_switch</span> on§</code></div></td><td><b>名字救一把。</b><code>conditioner_power</code> 这个工具不存在,是模型编的。规则:把名字<b>最后一段换成 <code>_switch</code></b> 再查一次 —— <code>conditioner_switch</code> 确实存在,而且参数是 <code>on</code>、像个开关,判定模型只是把名字尾巴记错了,改名派发。换完还查不到就<b>丢弃</b>,并在这一轮结束时告诉模型「你编了个工具名」</td></tr>
+<tr><td>2</td><td><div style="line-height:1.9"><span style="font-size:12.5px;color:var(--muted)">用户说「关上<b>我的</b>车门」</span><br><span style="color:var(--muted);font-size:12px">模型吐&nbsp;</span> <code>§call door_switch off <span style="color:var(--hot)">driver</span>§</code><br><span style="color:var(--muted);font-size:12px">改写成&nbsp;</span> <code>§call door_switch off <span style="color:var(--accent)">secondRowLeft</span>§</code></div></td><td><b>位置重算。</b>「我的」指的是<b>说话人坐哪儿</b>,麦克风阵列的音区知道 —— 比如人坐在二排左。模型填的 <code>driver</code> 是猜的。规则查一张座位表算出真实位置,<b>无条件覆盖</b>模型填的那个位置词(模型碰巧填对时覆盖成同值,没副作用)</td></tr>
+<tr><td>3</td><td><div style="line-height:1.9"><span style="font-size:12.5px;color:var(--muted)">用户说「氛围灯调成<b>蓝色</b>」</span><br><span style="color:var(--muted);font-size:12px">模型吐&nbsp;</span> <code>§call ambient_light_color§</code> <span style="font-size:12.5px;color:var(--hot)">参数是空的</span><br><span style="color:var(--muted);font-size:12px">改写成&nbsp;</span> <code>§call ambient_light_color <span style="color:var(--accent)">蓝色</span>§</code></div></td><td><b>空参兜底。</b>模型这次一个参数都没给。规则去<b>用户原话里</b>捞一个,条件很严:必须<b>既在这个工具自己的枚举里、又字面出现在原话里</b>。「蓝色」两个条件都满足 → 补上。捞不到就<b>不补</b>,空着往下走</td></tr>
+<tr><td>4</td><td><div style="line-height:1.9"><span style="color:var(--muted);font-size:12px">模型吐&nbsp;</span> <code>§call fridge_mode on <span style="color:var(--hot)">cool</span>§</code><br><span style="color:var(--muted);font-size:12px">改写成&nbsp;</span> <code>§call fridge_mode on <span style="color:var(--accent)">制冷</span>§</code></div></td><td><b>中英归一。</b>目录里这个工具的枚举写的是「制冷」,模型爱吐英文。查一张小映射表(<code>auto→自动</code>、<code>dark→深色</code>、<code>cool→制冷</code>…)换过来。换完还要<b>确认换出来的词确实在这个工具的枚举里</b>才替换 —— 否则 <code>on</code>/<code>off</code>/<code>set</code> 这些协议词会被误翻</td></tr>
+</tbody></table></div>
+
+<div class="note key">
+<h4>这四道是纯规则,模型完全不参与</h4>
+<p>四道全是<b>座舱前端 JS 里的确定性代码</b>:if / 正则 / 查表,没有一次模型调用,也不消耗任何 hop。
+它们跑在前端把 <code>§call§</code> 切出来之后、往仪表盘上画之前那一瞬间,入口只有一个 —— <code>dispatch(name, args, 'voice')</code>。</p>
+<p>而且它们<b>只在 <code>source === 'voice'</code> 时才跑</b>:手动点按钮、系统联动(上车唤醒/泊车熄火)都绕开这一段,因为那些参数不是模型给的。</p>
+</div>
+
+<details><summary>四道改写在代码的哪一行</summary><div class="dinner">
+<p>全在同一个文件:<code>public/streaming/omni-app.safe.js</code>。</p>
+<div class="scroller"><table>
+<thead><tr><th style="width:38px">#</th><th>函数</th><th style="width:88px">行号</th><th>它查的表</th></tr></thead>
+<tbody>
+<tr><td>—</td><td><code>dispatch()</code> 总入口</td><td><code>:115</code></td><td>—</td></tr>
+<tr><td>1</td><td>清单外硬闸 / 改名(写在 <code>dispatch</code> 里)</td><td><code>:117-129</code></td><td><code>V2.getTool(name)</code>,即前端那份工具表</td></tr>
+<tr><td>2</td><td><code>rewriteRelativeArgs()</code></td><td><code>:532-540</code></td><td><code>SEAT_REL</code> <code>:501-511</code>,经 <code>resolveRelativePos()</code> <code>:516-530</code></td></tr>
+<tr><td>3</td><td><code>fillMissingSlot()</code></td><td><code>:65-79</code></td><td>该工具自己的 <code>primary/secondary_choices</code>;颜色再兜一层 <code>COLOR_ZH2EN</code> <code>:62</code></td></tr>
+<tr><td>4</td><td><code>normalizeEnumArgs()</code></td><td><code>:84-95</code></td><td><code>EN2ZH_ENUM</code> <code>:81</code></td></tr>
+</tbody></table></div>
+<p>调用顺序就写在 <code>dispatch</code> 第 <code>131-132</code> 行,三行连着,顺序固定:</p>
+<pre><span class="c">// public/streaming/omni-app.safe.js:130</span>
+if (source === 'voice') {
+  args = rewriteRelativeArgs(args);   <span class="c">// ② 位置重算</span>
+  args = fillMissingSlot(name, args); <span class="c">// ③ 空参兜底</span>
+  args = normalizeEnumArgs(name, args); <span class="c">// ④ 中英归一</span>
+}</pre>
+<p>顺序有讲究:② 先把位置定下来,③ 判断「有没有真参数」时才不会把位置词误当成真参数
+(<code>fillMissingSlot</code> 第一行那条正则专门把 <code>driver/copilot/secondRowLeft…</code> 排除在「真参数」之外)。</p>
+<p>上游入口是转写流解析 <code>parseTags()</code> <code>:642-667</code>,它每扫到一个新 <code>§…§</code> 就 <code>dispatch(name, clean, 'voice')</code>(<code>:665</code>)。</p>
+</div></details>
+
+<details><summary>「查一张座位表算出真实位置」到底怎么算</summary><div class="dinner">
+<p>两步:<b>先知道说话人坐哪儿</b>,<b>再查表</b>。没有几何计算,也没有推理。</p>
+<p><b>第一步,说话人坐哪儿</b> —— 页面上就是个下拉框 <code>#seatSelect</code>(真车上这一格由麦克风阵列的音区判定填)。它给出一个座位枚举,比如 <code>secondRowLeft</code>。</p>
+<p><b>第二步,查表</b> —— 一个座位一行,每行写死了「这边/左边/右边/前面/后面」各自等于哪个具体位置:</p>
+<pre><span class="c">// public/streaming/omni-app.safe.js:501  映射表现算好直接给</span>
+<span class="c">//（抽象换算规则小模型走不稳，具体表照抄就行）</span>
+const SEAT_REL = {
+  driver:         { 这边:'driver',        左边:'driver',        右边:'copilot',        后面:'secondRowLeft' },
+  copilot:        { 这边:'copilot',       左边:'driver',        右边:'copilot',        后面:'secondRowRight' },
+  secondRowLeft:  { 这边:'secondRowLeft', 左边:'secondRowLeft', 右边:'secondRowRight', 前面:'driver',  后面:'thirdRowLeft' },
+  secondRowRight: { 这边:'secondRowRight',左边:'secondRowLeft', 右边:'secondRowRight', 前面:'copilot', 后面:'thirdRowRight' },
+  <span class="c">// …thirdRowLeft / thirdRowRight 同理</span>
+};</pre>
+<p><b>怎么知道用户说的是哪一格</b> —— <code>resolveRelativePos()</code> 拿本轮原话按顺序试几条正则,命中哪条就取表里对应的那一格:</p>
+<div class="scroller"><table>
+<thead><tr><th>原话里出现</th><th>取表里的</th><th>坐在 <code>secondRowLeft</code> 时结果</th></tr></thead>
+<tbody>
+<tr><td>我左边 / 我左侧 / 我左手</td><td><code>左边</code></td><td><code>secondRowLeft</code></td></tr>
+<tr><td>我右边 / 我右侧 / 我右手</td><td><code>右边</code></td><td><code>secondRowRight</code></td></tr>
+<tr><td>我前面 / 我前方</td><td><code>前面</code></td><td><code>driver</code></td></tr>
+<tr><td>我后面 / 我后方</td><td><code>后面</code></td><td><code>thirdRowLeft</code></td></tr>
+<tr><td>我这边 / 我旁边 / 我身边</td><td><code>这边</code></td><td><code>secondRowLeft</code></td></tr>
+<tr><td><b>我的</b>车门 / 关<b>我</b>车窗(只有所有格,没方位)</td><td><code>这边</code></td><td><code>secondRowLeft</code></td></tr>
+</tbody></table></div>
+<p><b>先剥助词式的「我」。</b>「帮我 / 给我 / 让我 / 我想 / 我要」里的「我」不是位置语义,剥掉之后句子里还剩「我」才继续往下算 —— 否则「帮我开空调」会被当成「开我这边的空调」。剥完不剩「我」就直接 <code>return null</code>,这一道整个不动。</p>
+<p><b>算出来之后怎么用</b> —— 在 <code>args</code> 里找第一个长得像位置的参数(<code>driver|copilot|secondRow…|left|right|all…</code>),找到就<b>原地换掉</b>,一个都没有就<b>追加到末尾</b>。这是无条件的:模型填对了也覆盖一遍,填成同值,没副作用。</p>
+<div class="note">
+<h4>不带「我」的说法不走这条路</h4>
+<p>「右边的车窗」这种<b>没有「我」</b>的区域说法,直接用聚合枚举 <code>right</code>,不换算 —— <code>resolveRelativePos()</code> 第一行 <code>if (!text.includes('我')) return null</code> 就挡住了。只有「我 + 方位」才是相对的,才需要知道说话人坐哪儿。</p>
+</div>
+</div></details>
+
+<div class="note">
+<h4>这四道的存在本身就是证据</h4>
+<p>它们全部是在<b>修模型填出来的东西</b>:覆盖模型填的位置、模型吐空参时才补、模型吐英文枚举时映射成中文、模型编工具名时救一把。</p>
+<p>如果参数是编排层自己从原话抠的,这些逻辑一条都不需要存在。</p>
+</div>
+
+<div class="note key">
+<h4>三个词分清楚：覆盖 / 兜底 / 归一</h4>
+<p>它们经常被一起说成「规则兜底」,但触发条件完全不同,遇到 bug 时找错地方会绕很久:</p>
+<div class="scroller"><table>
+<thead><tr><th></th><th>什么时候动</th><th>模型给对了会怎样</th></tr></thead>
+<tbody>
+<tr><td><b>覆盖</b> 第 2 道</td><td>原话里有「我的/我这边」就动,<b>无条件</b></td><td>算出同值,覆盖成一样的,无副作用</td></tr>
+<tr><td><b>兜底</b> 第 3 道</td><td><b>只在一个真参数都没有时</b>才动</td><td>一个字都不改,直接返回</td></tr>
+<tr><td><b>归一</b> 第 4 道</td><td>每次都跑,但只在映射结果落在该工具枚举里才替换</td><td>已经是中文枚举,映射表里查不到,原样返回</td></tr>
+</tbody></table></div>
+<p><b>只有第 3 道是真正意义上的「兜底」。</b>另外两道在模型给对的时候也照跑。</p>
+</div>
+</div>
+</details>
+
+<!-- ==================== STEP 6 ==================== -->
+<details class="stepcard" style="border-left-style:dashed">
+<summary><span class="stepnum">STEP 6</span><span class="steptitle">下发</span></summary>
+<div class="cbody">
+<p class="who">谁在做 &nbsp;<b>后端 <code>car_sim</code></b>&nbsp;·&nbsp; 前端只是跟着画</p>
+
+<p>同一条 <code>§call§</code>,<strong>两个地方各收一份</strong>:</p>
+<div class="scroller"><table>
+<thead><tr><th>发给谁</th><th>它拿去干什么</th><th>用的参数</th></tr></thead>
+<tbody>
+<tr class="win"><td><b>后端 <code>car_sim</code></b></td><td><b>真执行</b> —— 改状态,产生回执</td><td>模型原样给的</td></tr>
+<tr class="dim"><td>屏幕前端</td><td>画座舱仪表盘</td><td>经过 STEP 5 那四道改写</td></tr>
+</tbody></table></div>
+<p>所以 <strong>STEP 5 那四道改写不影响车真正收到什么</strong> —— 它们只存在于前端。前端代码自己写着:「动作已在服务端 <code>car_sim</code> 执行，这里只做可视化镜像+日志」。</p>
+
+<p><strong>后端执行完，回执长这样:</strong></p>
+<pre>{
+  "结果": <span class="hi">"成功"</span>,
+  "部件": "空调温度",
+  "现态": "24℃",
+  "自动带开": ["空调"],      <span class="c">← 有联动时才有</span>
+  "注意": "已钳到上限32℃"    <span class="c">← 有钳位时才有</span>
+}</pre>
+
+<p><strong><code>结果</code> 只有三种:</strong></p>
+<div class="scroller"><table>
+<thead><tr><th>结果</th><th>什么情况</th><th>模型接下来做什么</th></tr></thead>
+<tbody>
+<tr><td><b>成功</b></td><td>改动生效了</td><td>继续下一项;全做完了口播确认</td></tr>
+<tr><td><b>无需执行</b></td><td>这部件<b>已经是</b>目标状态了</td><td>直接告诉用户「空调已经开着了哦」,<b>不要重复调用</b></td></tr>
+<tr><td><b>失败</b></td><td>工具名越界,或参数不合法</td><td>照回执里的清单改名/改参数<b>重试</b>(回 STEP 5)</td></tr>
+</tbody></table></div>
+
+<div class="note key">
+<h4>回执不是「返回值」，是写回模型上下文的一段话</h4>
+<pre><span class="c">await</span> s.engine.send(json.dumps({<span class="c">"type"</span>: <span class="c">"obs"</span>, <span class="c">"text"</span>: obs, …}))</pre>
+<p>模型下一跳是<b>带着这张回执</b>继续生成的。所以它说的那句「已经调到24度了」,依据是回执里的「现态: 24℃」,<b>不是它自己以为发出去的那条调用</b>。回执被钳到 32 度,它就得说 32。</p>
+</div>
+
+<div class="note">
+<h4>推进 agenda 是什么意思</h4>
+<p>回想 STEP 1:第一跳模型已经把整轮话拆成了一张<b>有序任务清单</b>。比如「打开空调，播放音乐，然后导航回家」拆成:</p>
+<pre>task-1  climate               ← 指针在这儿
+task-2  audio
+task-3  subagent_navigation</pre>
+<p><b>「推进 agenda」就是把这个指针往下挪一格。</b>挪的时候顺带做两件事:把 <code>active_group</code> 换成下一项的大类,把那一类的 Schema 重新渲染一遍注入进去 —— 于是模型手上的候选清单从 climate 那 18 条换成了 audio 那一类。</p>
+<p><b>成功才挪:</b></p>
+<pre><span class="c">if</span> _obs_succeeded(obs_parts):
+    next_context = <span class="c">await</span> _advance_agenda(s)</pre>
+<p>失败就<b>停在原地</b>,注入的还是同一份 Schema,模型对着同一个 task 重来。这就是「一个任务没做成,不会带着它往下走」。</p>
+</div>
+</div>
+</details>
+</section>
+
+<section class="band">
+<h2>六步回顾</h2>
+<div class="scroller"><table>
+<thead><tr><th>#</th><th>做了什么</th><th>谁在做</th><th>要判断吗</th><th>之后手上有什么</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>按大类取出全部候选</td><td>编排层</td><td>否 · 查表</td><td>18 个候选工具</td></tr>
+<tr><td>2</td><td>渲染成一行一个,注入 KV</td><td>编排层</td><td>否 · 字符串拼接</td><td>1109 字符注入(抬头 137 + 大类块 970)</td></tr>
+<tr class="win"><td>3</td><td><b>选工具并写参数</b></td><td>模型</td><td><b>是 · 全程唯一一次</b></td><td><code>§call conditioner_temperature set 24§</code></td></tr>
+<tr><td>4</td><td>正则切出动作,split 成名字和参数</td><td>编排层</td><td>否</td><td><code>name</code> + <code>args</code></td></tr>
+<tr><td>5</td><td>闭集硬闸;前端另做四道参数改写</td><td>编排层</td><td>只判「越没越界」</td><td>放行 或 一张带自救说明的失败回执(模型据此重试)</td></tr>
+<tr><td>6</td><td>后端执行 + 前端画屏;回执写回模型 KV</td><td>后端 <code>car_sim</code></td><td>是 · 判回执成没成</td><td>回执;成功才推进 agenda 下一项</td></tr>
+</tbody></table></div>
+<p style="margin-top:16px;color:var(--muted);font-size:13.5px">整条链路上<b>只有一次真正的选择</b>,在 STEP 3,在模型里。编排层从头到尾做的是三件事:<b>把候选收窄到 18 个、把结果切开、把越界的挡回去</b>。</p>
+</section>
+
+<section class="band">
+<h2>附录 · 仓库里那条不接模型的演示路</h2>
+<p>上面六步讲的是<b>最终形态</b>:必须接上模型,接不上就起不来 —— <code>streaming/start_streaming_nonrag.sh</code> 会检查模型目录和 GPU,缺一样直接 <code>exit 1</code>。</p>
+<p>仓库里还有另一份代码 <code>src/</code>(<code>node src/server.js</code>,<code>POST /api/run</code>)。它跑的是同一套两级闭集分类,但把「判断」换成一个<b>离线打分器</b>、把「模型写参数」换成<b>六条正则</b>,好处是<b>没有 GPU 也能把整个分类过程完整打印出来</b>。</p>
+<div class="note key">
+<h4>它和上面那条不是主备关系，是两个独立的应用</h4>
+<p>不同语言、不同进程、不同端口,<b>双向零交叉引用</b>:<code>src/*.js</code> 里搜不到 <code>streaming</code>,<code>public/streaming/*</code> 里搜不到 <code>/api/run</code> 或 <code>planner</code>,Python 侧只 import <code>vendor/</code> 和 <code>streaming.group_catalog</code>。<b>GPU 那套没起来的话,它不会顶上。</b></p>
+<p>唯一的接触点是<b>静态文件托管</b>:<code>src/server.js</code> 顺带把座舱页面发出去,但页面一加载就直连 <code>ws://…:8871</code>,之后一切都不经过 <code>/api/run</code>。</p>
+</div>
+<p>下面三段留作对照,<b>描述的都不是最终形态</b>。</p>
+
+<details class="stepcard"><summary><span class="stepnum">演示路</span><span class="steptitle">判断:离线打分器</span></summary>
+<div class="cbody">
+<p class="who">谁在做 &nbsp;<b>离线打分器</b>&nbsp;·&nbsp; 只存在于 <code>src/classifier.js</code></p>
+<p>给 18 个候选各打一个分,最高分胜出,再按「第一名领先第二名多少」折算出一个置信度。这个数<b>不参与任何判断</b> —— 全流程没有一处拿它做阈值拦截,算出来只在界面上显示成一个百分比。前三名:</p>
 <div class="scroller"><table>
 <thead><tr><th>名次</th><th>工具</th><th>描述</th><th>得分</th></tr></thead>
 <tbody>
@@ -601,9 +1133,6 @@ tool_schemas = 18 条（2482 字符）</pre></div>
 <tr><td>2</td><td><code>conditioner_speed</code></td><td>调空调风量</td><td>14</td></tr>
 <tr class="dim"><td>3</td><td><code>fridge_temperature</code></td><td>车载冷暖箱的温度</td><td>12</td></tr>
 </tbody></table></div>
-
-
-
 <details><summary>0.92 这个置信度是怎么算的，以及它到底有没有用</summary><div class="dinner">
 <p><b>计算「第一名领先第二名多少」：</b></p>
 <div class="math">
@@ -667,50 +1196,37 @@ confidence = 0.52 + (第一名得分 − 第二名得分) ÷ (第一名得分 + 
 <li><code>conditioner_speed</code>(14)—— 前三项和第一名<b>一模一样</b>(2+5+7=14),因为它的分类名同样是「空调」;只是原话里没有「风量/档」,拿不到那 +12。</li>
 <li><code>fridge_temperature</code>(12)—— <b>只拿到那 +12</b>。它的分类名是「冷暖箱」、描述是「车载冷暖箱的温度」,和原话里的「空调」完全不重合,前三项全是 0。</li>
 </ul>
-<p>同分时按工具名<b>字母序</b>决定名次 —— 这就是「空调调高一点」那个例子选错的直接原因。</p>
-</div></details>
-
-<details><summary>逃逸检查是什么意思</summary><div class="dinner">
-<p>判别方回来的东西,在用之前先核对一遍「是不是清单里的」。不在清单里就报错,整个请求失败。</p>
-<p>「逃逸」指的是<b>答案跑到了闭集之外</b> —— 全流程一共两处:</p>
-<div class="scroller"><table>
-<thead><tr><th>在哪</th><th>检查什么</th><th>不通过会怎样</th></tr></thead>
-<tbody>
-<tr><td>一级 Head 之后</td><td>返回的 <code>category</code> 是不是那 22 个之一</td><td>抛错 <code>非法一级类别: xxx</code></td></tr>
-<tr class="win"><td>二级 Head 之后<br><span style="font-size:12.5px;color:var(--muted)">（这一步）</span></td><td>返回的 <code>tool</code> 名字能不能在<b>这 18 个里</b>找到</td><td>抛错 <code>模型选择了大类外工具: xxx</code></td></tr>
-</tbody></table></div>
-<pre><span class="c">// 逃逸检查</span>
-<span class="c">const</span> tool = groupTools.find((item) =&gt; item.name === result.tool);
-<span class="c">if</span> (!tool) <span class="c">throw new</span> Error(`模型选择了大类外工具: ${result.tool}`);</pre>
-
-</div></details>
-
-<details><summary>两级 Head 的输入输出，并排看</summary><div class="dinner">
-<div class="scroller"><table>
-<thead><tr><th></th><th>一级 Head</th><th>二级 Head（这一步）</th></tr></thead>
-<tbody>
-<tr><td><b>输入 1</b></td><td>用户原话</td><td>用户原话</td></tr>
-<tr><td><b>输入 2</b></td><td>22 个类的<b>名字和描述</b><br><span style="font-size:12.5px;color:var(--muted)">不含任何工具</span></td><td>该大类的 <b>18 条工具 schema</b><br><span style="font-size:12.5px;color:var(--muted)">不含另外 530 个工具</span></td></tr>
-<tr><td><b>清单谁给的</b></td><td colspan="2">都是<b>编排层</b>在调用之前准备好、直接传进去的。判别方没有任何途径去拿清单以外的东西。</td></tr>
-<tr><td><b>输出</b></td><td><code>{ category, confidence }</code></td><td><code>{ tool, confidence }</code></td></tr>
-<tr><td><b>输出给谁</b></td><td>编排层 —— 拿 <code>category</code> 去查表,取出那 18 个工具</td><td>编排层 —— 拿工具对象进 STEP 4 抠参数</td></tr>
-</tbody></table></div>
-<p>两级都是<b>闭集</b>。这也是「两层」这个名字的由来 —— 548 个工具不是一次判完的,是先切到 20 分之 1,再在剩下的里面挑。</p>
+<p>同分时按工具名<b>字母序</b>决定名次 —— 这也是演示路会选错工具的一个直接来源。</p>
 </div></details>
 </div>
 </details>
 
-<!-- ==================== STEP 4 ==================== -->
-<details class="stepcard">
-<summary><span class="stepnum">STEP 4</span><span class="steptitle">从原话里抠参数</span></summary>
+<details class="stepcard"><summary><span class="stepnum">演示路</span><span class="steptitle">参数:六条正则</span></summary>
 <div class="cbody">
-<p class="who">谁在做 &nbsp;<b>编排层</b>&nbsp;·&nbsp; 纯正则,不做判断</p>
-<p>已经知道要调 <code>conditioner_temperature</code> 了,但还差参数。这一步拿工具认的可选值去比对用户原话。</p>
+<p class="who">谁在做 &nbsp;<b>编排层</b>&nbsp;·&nbsp; 判别方不参与</p>
+<p>演示路上判别方的返回格式只有 <code>{tool, confidence, rationale}</code>,<b>没有 <code>parameters</code> 这个键</b>,所以参数改由编排层用六条正则从原话里抠一个出来顶替。</p>
+
 <div class="io">
   <div class="in"><div class="lab">输入</div><pre>query   = "把空调调到24度"
 choices = ["set", "inc", "dec"]     <span class="c">← 这个工具认的可选值</span></pre></div>
   <div class="out"><div class="lab">输出</div><pre>parameters = [ "set", "24度" ]</pre></div>
 </div>
+
+<details><summary>Demo 里模型确实交不出参数 —— 两处代码</summary><div class="dinner">
+<p><b>① 判别方的返回契约里没有 parameters:</b></p>
+<pre><span class="c">// src/classifier.js · OpenAICompatibleClassifier.selectTool</span>
+system: "…提取参数时只能使用 schema 给出的枚举或用户明确给出的数值。
+        返回 JSON: <span class="hi">{tool, confidence, rationale}</span>"     <span class="hot">← 没有 parameters</span>
+
+<span class="c">return</span> { tool, confidence, alternatives, rationale };    <span class="hot">← 也不透传</span></pre>
+<p>这段 prompt 自己是<b>矛盾的</b>:前半句要求模型提取参数,后半句给的返回格式里根本没有 <code>parameters</code> 这个键。那半句在这条演示路上是一条<b>死指令</b>。</p>
+
+<p><b>② 于是编排层无条件用正则顶上:</b></p>
+<pre><span class="c">// src/planner.js:241-242</span>
+<span class="c">const</span> selection = <span class="c">await</span> <span class="c">this</span>.classifier.selectTool(task.text, candidates);
+<span class="c">const</span> parameters = extractParameters(<span class="hi">task.text</span>, selection.tool);</pre>
+<p><code>task.text</code> 是切分后的用户原话。这一行只从 <code>selection</code> 里取走了 <code>tool</code> 一个字段。</p>
+</div></details>
 
 <div class="note key">
 <h4>六条规则从上到下依次全部执行</h4>
@@ -778,28 +1294,11 @@ if (number &amp;&amp; !parameters.includes(number[0])) parameters.push(number[0]
 <span class="c">return</span> parameters;</pre>
 <p><code>unshift</code>(插到最前)和 <code>push</code>(追加到最后)的区别是刻意的:动作类插前面,数值和位置跟后面,让结果读起来是「设定、24度、主驾」这种顺序。每条都带 <code>!parameters.includes(...)</code> 去重,同一个值不会被加两次。</p>
 </div></details>
+
 </div>
 </details>
 
-<!-- ==================== STEP 5 ==================== -->
-<details class="stepcard">
-<summary><span class="stepnum">STEP 5</span><span class="steptitle">拼成 tool call</span></summary>
-<div class="cbody">
-<p class="who">谁在做 &nbsp;<b>编排层</b>&nbsp;·&nbsp; 无新逻辑</p>
-<p>到这一步没有任何新判断 —— STEP 3 给了工具,STEP 4 给了参数,放进同一个对象就是最终产物。</p>
-<div class="final">
-<h3>tool call</h3>
-<pre>{
-  "tool": "conditioner_temperature",
-  "parameters": ["set", "24度"]
-}</pre>
-</div>
-</div>
-</details>
-
-<!-- ==================== STEP 6 ==================== -->
-<details class="stepcard" style="border-left-style:dashed">
-<summary><span class="stepnum">STEP 6</span><span class="steptitle">下发</span></summary>
+<details class="stepcard"><summary><span class="stepnum">演示路</span><span class="steptitle">执行端:一张内存表</span></summary>
 <div class="cbody">
 <p class="who">谁在做 &nbsp;<b>执行端</b>&nbsp;·&nbsp; 逻辑 Demo 里是一个模拟器</p>
 <p>tool call 成型之后要交出去执行。这一步的形态可能和你预期的不一样。</p>
@@ -841,19 +1340,6 @@ parameters = ["set", "24度"]</pre></div>
 </details>
 </section>
 
-<section class="band">
-<h2>六步回顾</h2>
-<div class="scroller"><table>
-<thead><tr><th>#</th><th>做了什么</th><th>谁在做</th><th>要判断吗</th><th>之后手上有什么</th></tr></thead>
-<tbody>
-<tr><td>1</td><td>按大类取出全部候选</td><td>编排层</td><td>否 · 查表</td><td>18 个候选工具</td></tr>
-<tr><td>2</td><td>每个候选裁到 4 个字段</td><td>编排层</td><td>否 · 字段裁剪</td><td>2482 字符的候选清单</td></tr>
-<tr class="win"><td>3</td><td>在 18 个里选一个</td><td>二级 Head</td><td><b>是</b></td><td><code>conditioner_temperature</code></td></tr>
-<tr><td>4</td><td>从原话抠参数</td><td>编排层</td><td>否 · 6 条正则</td><td><code>["set", "24度"]</code></td></tr>
-<tr><td>5</td><td>拼起来</td><td>编排层</td><td>否</td><td><b>tool call</b></td></tr>
-<tr><td>6</td><td>下发,写状态,拼回执</td><td>执行端</td><td>否</td><td>回执 <code>ok: true</code></td></tr>
-</tbody></table></div>
-</section>
 
 </div>
 
