@@ -211,7 +211,7 @@ tr.dim td{color:var(--muted)}
 <h3>名词解释</h3>
 <dl>
   <dt>编排层</dt>
-  <dd>harness 里<strong>负责按顺序调度所有任务的模块</strong>。它自己不做语义判断,只负责「先做这个、再做那个」,并把上一步的结果交给下一步。下面六步里,除了第 3 步(模型判断)和第 6 步(执行端),其余都是它自己干的活。</dd>
+  <dd>harness 里<strong>负责调度所有任务的模块</strong>。它自己不做语义判断,只负责「先做这个、再做那个」,并把上一步的结果交给下一步。下面六步里,除了第 3 步(模型判断)和第 6 步(执行端),其余都是它自己干的活。</dd>
   <dt>Head</dt>
   <dd><strong>做一次分类判断的角色</strong>,分两级:一级 Head 判「属于哪个大类」,二级 Head 判「大类里的哪个工具」。<b>两级都在同一个模型里</b> —— 是协议上的两次输出,不是两个独立训练出来的 decoder head,更不是两个模块。本文的起点是一级 Head 已经跑完。</dd>
 </dl>
@@ -230,53 +230,76 @@ tr.dim td{color:var(--muted)}
 
 <h3 style="font-family:'Familjen Grotesk',system-ui,sans-serif;font-size:16px;font-weight:600;color:var(--ink);margin:26px 0 10px">一 · 工程视角:三层,谁跟谁说话</h3>
 <figure>
-<svg viewBox="0 0 900 660" role="img" aria-label="三层架构图。接入层是座舱UI：采麦克风、按静音 0.7 秒判断用户说完没有、把服务端已经执行完的动作画到 2D/3D 车模上并播放回传语音——画的是镜像，不是它自己在执行，关掉它整条链路照常跑完。座舱UI 与编排层之间是一条一直开着的长连接，上行是音频流和「我说完了」的信号，下行是要执行的动作、执行结果、进度用量和合成好的语音。编排层是整套系统唯一的大脑，做七件事：进度管理，记录本轮拆出的任务数以及当前进行到第几项；一致性校验，模型给出的任务数与逐字听写不一致则整轮驳回；工具下发，按当前任务所属类别只下发该类的十余个工具；越界拦截，工具名不在该类清单内则不执行、驳回并附上合法工具名；工具执行，调用执行侧执行动作并将执行结果回显给模型；播报下发，末跳文本分片送语音合成、音频回传座舱UI；轮次上限，单轮模型交互最多 10 次，超出即强制收尾。编排层旁边有两块归它调用的模块：工具清单目录，把全车 547 个能调的部件事先按用途分成 20 组，编排层向它要某一组、它给回一份清单，目的是让模型每次只面对十几个候选而不是 547 个；执行侧车辆状态机，维护车辆状态的状态机，内存里保存每个部件的开关、数值和档位，负责执行动作、更新状态、判定执行结果、响应状态查询；编排层向它下发动作、它返回执行结果，双向；车辆状态以它为准，座舱UI 只做同步显示。推理层是两个吃 GPU 的服务，只被编排层调用，座舱UI 碰不到它们：模型引擎跑 Qwen3-Omni，输入原始音频输出文本，听写、意图判断、工具调用由它一次输出，全系统没有独立的语音识别模块，会话常驻，上一轮的上下文留在显存；语音合成输入纯文本输出音频，流式合成边合成边返回，首块音频约 105ms 返回。">
+<svg viewBox="0 0 900 886" role="img" aria-label="三层架构图。接入层是座舱UI，它只是音频进出的入口和车辆状态的镜像，：采集麦克风音频、重采样 16k、每 100ms 上行一块；播放回传音频，根据Duplex Head处理用户打断行为；车控状态只做可视化，镜像执行侧状态机，。座舱UI 与 Agent Loop 之间是一条一直开着的长连接，上行是音频流，下行是要执行的动作、执行结果、进度用量和合成好的语音。Agent Loop 是整套系统唯一的大脑，职责分三组。任务管理：一致性校验，模型给出的任务数与逐字听写不一致则整轮驳回；进度管理，记录本轮拆出的任务数以及当前进行到第几项；轮次上限，单轮模型交互最多 10 次，超出则强制终止；播报下发，最终口播文本分片送语音合成、音频回传座舱UI。工具调用：工具下发，按当前任务所属类别只下发该类的十余个工具；越界拦截，工具名不在该类清单内则不执行、驳回并附上合法工具名；工具执行，调用执行侧执行动作并将执行结果回显给模型。多智能体：sub-Agent下发，归到子 Agent 的任务不下发车控工具，转交对应的子 Agent 处理。上下文系统：上下文压缩，KV 超 12000 token 时切掉中段、保住 system 前缀与最近窗口；用完即弃，工具清单下一轮丢弃、执行回执保留；上下文总结与回写、记忆沉淀、记忆检索与读取三项仍在规划中，当前分支未实现。Agent Loop 旁边有两块归它调用的模块：车控清单，把全车 547 个能调的部件事先分成 20 大类，Agent Loop 按组请求、它返回一份清单，目的是让模型每次只面对十几个候选而不是 547 个；执行侧车辆状态机，内存里保存每个部件的开关、数值和档位，按 Agent Loop 的指令执行动作、更新状态、判定结果，车辆状态以它为准，座舱UI 只做同步显示。推理层只有一个 Omni 模型，直接吃原始音频，下面五路输出都出自同一个模型：ASR Head，语音转文本；Intent Head，定位到具体的意图大类；语音生成，生成对应音频；车控指令生成，由大类 schema 生成车控指令和参数；Duplex Head 判停，给出当前用户指令输入的状态。">
 <defs>
 <marker id="fe" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--d-line)"/></marker>
 <marker id="fe2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"/></marker>
 </defs>
-<path d="M58 16 L58 156" stroke="var(--rule)" stroke-width="1"/>
-<path d="M58 238 L58 480" stroke="var(--hot)" stroke-width="1.4"/>
-<path d="M58 552 L58 642" stroke="var(--rule)" stroke-width="1"/>
-<text font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--ink)" font-weight="700" text-anchor="middle" transform="translate(36,86) rotate(-90)">接入层</text><text font-family="Manrope, PingFang SC, sans-serif" font-size="8.4" fill="var(--muted)" text-anchor="middle" transform="translate(51,86) rotate(-90)">给人看、给人听</text>
-<text font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--ink)" font-weight="700" text-anchor="middle" transform="translate(36,359) rotate(-90)">编排层</text><text font-family="Manrope, PingFang SC, sans-serif" font-size="8.4" fill="var(--muted)" text-anchor="middle" transform="translate(51,359) rotate(-90)">决策与执行</text>
-<text font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--ink)" font-weight="700" text-anchor="middle" transform="translate(36,597) rotate(-90)">推理层</text><text font-family="Manrope, PingFang SC, sans-serif" font-size="8.4" fill="var(--muted)" text-anchor="middle" transform="translate(51,597) rotate(-90)"></text>
+<path d="M58 16 L58 112" stroke="var(--rule)" stroke-width="1"/>
+<path d="M58 238 L58 640" stroke="var(--hot)" stroke-width="1.4"/>
+<path d="M58 712 L58 862" stroke="var(--rule)" stroke-width="1"/>
+<text font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--ink)" font-weight="700" text-anchor="middle" transform="translate(36,64) rotate(-90)">接入层</text><text font-family="Manrope, PingFang SC, sans-serif" font-size="8.4" fill="var(--muted)" text-anchor="middle" transform="translate(51,64) rotate(-90)">给人看、给人听</text>
+<text font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--ink)" font-weight="700" text-anchor="middle" transform="translate(36,439) rotate(-90)">Agent Loop</text><text font-family="Manrope, PingFang SC, sans-serif" font-size="8.4" fill="var(--muted)" text-anchor="middle" transform="translate(51,439) rotate(-90)">决策与执行</text>
+<text font-family="Manrope, PingFang SC, sans-serif" font-size="11" fill="var(--ink)" font-weight="700" text-anchor="middle" transform="translate(36,789) rotate(-90)">推理层</text><text font-family="Manrope, PingFang SC, sans-serif" font-size="8.4" fill="var(--muted)" text-anchor="middle" transform="translate(51,789) rotate(-90)"></text>
 
 <!-- 座舱UI -->
-<rect x="74" y="16" width="560" height="140" rx="8" fill="var(--d-band)" stroke="var(--d-line)" stroke-width="1.1"/>
-<text x="90" y="40" font-family="Manrope, PingFang SC, sans-serif" font-size="12" fill="var(--ink)" font-weight="700">座舱UI</text>
-<path d="M90 50 L618 50" stroke="var(--rule-soft)" stroke-width="1"/>
-<text x="90" y="72" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--body)">从麦克风采取语音,每 100ms 推送一次</text>
-<text x="90" y="92" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--body)">语音判停</text>
-<text x="90" y="112" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--body)">把执行结果回显到座舱UI ,并播放回传的语音</text>
+<rect x="74" y="16" width="470" height="96" rx="8" fill="var(--d-band)" stroke="var(--d-line)" stroke-width="1.1"/>
+<text x="90" y="38" font-family="Manrope, PingFang SC, sans-serif" font-size="12" fill="var(--ink)" font-weight="700">座舱UI</text>
+<text x="140" y="38" font-family="Manrope, PingFang SC, sans-serif" font-size="9" fill="var(--muted)">音频进出的入口 + 车辆状态的镜像</text>
+<path d="M90 48 L528 48" stroke="var(--rule-soft)" stroke-width="1"/>
+<text x="90" y="68" font-family="Manrope, PingFang SC, sans-serif" font-size="9.2" fill="var(--body)">采集麦克风音频,重采样 16k,每 100ms 上行一块</text>
+<text x="90" y="84" font-family="Manrope, PingFang SC, sans-serif" font-size="9.2" fill="var(--body)">播放回传音频,根据Duplex Head处理用户打断行为</text>
+<text x="90" y="100" font-family="Manrope, PingFang SC, sans-serif" font-size="9.2" fill="var(--body)">车控状态可视:镜像执行侧状态机,</text>
 
 <!-- 座舱UI ↔ 编排层 -->
-<path d="M140 162 L140 232" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fe)"/>
-<text x="152" y="187" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">上行:音频流,和</text>
-<text x="152" y="202" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">「我说完了」的信号</text>
-<path d="M470 232 L470 162" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fe)"/>
-<text x="482" y="187" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">下行:要执行的动作、执行结果、</text>
-<text x="482" y="202" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">进度用量,和合成好的语音</text>
+<path d="M140 118 L140 232" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fe)"/>
+<text x="152" y="186" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">上行:音频流</text>
+<path d="M470 232 L470 118" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fe)"/>
+<text x="482" y="178" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">下行:要执行的动作、执行结果、</text>
+<text x="482" y="193" font-family="Manrope, PingFang SC, sans-serif" font-size="9.5" fill="var(--body)">进度用量,和合成好的语音</text>
 
 <!-- 编排层 -->
-<rect x="74" y="238" width="470" height="242" rx="8" fill="var(--d-band)" stroke="var(--hot)" stroke-width="2"/>
-<text x="90" y="264" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" fill="var(--ink)" font-weight="700">编排层</text>
-<text x="150" y="264" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--hot)">负责按顺序调度所有任务的模块</text>
+<rect x="74" y="238" width="470" height="402" rx="8" fill="var(--d-band)" stroke="var(--hot)" stroke-width="2"/>
+<text x="90" y="264" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" fill="var(--ink)" font-weight="700">Agent Loop</text>
+<text x="172" y="264" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--hot)">负责按顺序调度所有任务的模块</text>
 <path d="M90 276 L528 276" stroke="var(--rule-soft)" stroke-width="1"/>
-<text x="146" y="302" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--ink)" font-weight="700" text-anchor="end">进度管理</text>
-<text x="158" y="302" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">记录本轮拆出的任务数,以及当前进行到第几项</text>
-<text x="146" y="328" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--ink)" font-weight="700" text-anchor="end">一致性校验</text>
-<text x="158" y="328" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">模型给出的任务数与逐字听写不一致,整轮驳回</text>
-<text x="146" y="354" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--ink)" font-weight="700" text-anchor="end">工具下发</text>
-<text x="158" y="354" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">按当前任务所属类别,只下发该类的十余个工具</text>
-<text x="146" y="380" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--ink)" font-weight="700" text-anchor="end">越界拦截</text>
-<text x="158" y="380" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">工具名不在该类清单内则不执行,驳回并附上合法名</text>
-<text x="146" y="406" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--ink)" font-weight="700" text-anchor="end">工具执行</text>
-<text x="158" y="406" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">调用执行侧执行动作,并将执行结果回显给模型</text>
-<text x="146" y="432" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--ink)" font-weight="700" text-anchor="end">播报下发</text>
-<text x="158" y="432" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">末跳文本分片送语音合成,音频回传座舱UI</text>
-<text x="146" y="458" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--ink)" font-weight="700" text-anchor="end">轮次上限</text>
-<text x="158" y="458" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">单轮模型交互最多 10 次,超出即强制收尾</text>
+<text x="90" y="294" font-family="Manrope, PingFang SC, sans-serif" font-size="9.8" fill="var(--hot)" font-weight="700">任务管理</text>
+<path d="M140 290 L528 290" stroke="var(--rule-soft)" stroke-width="1"/>
+<text x="170" y="312" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--ink)" font-weight="700" text-anchor="end">一致性校验</text>
+<text x="182" y="312" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">模型给出的任务数与逐字听写不一致,整轮驳回</text>
+<text x="170" y="330" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--ink)" font-weight="700" text-anchor="end">进度管理</text>
+<text x="182" y="330" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">记录本轮拆出的任务数,以及当前进行到第几项</text>
+<text x="170" y="348" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--ink)" font-weight="700" text-anchor="end">轮次上限</text>
+<text x="182" y="348" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">单轮模型交互最多 10 次,超出则强制终止</text>
+<text x="170" y="366" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--ink)" font-weight="700" text-anchor="end">播报下发</text>
+<text x="182" y="366" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">最终口播文本分片送语音合成,音频回传座舱UI</text>
+<path d="M90 380 L528 380" stroke="var(--rule-soft)" stroke-width="1"/>
+<text x="90" y="398" font-family="Manrope, PingFang SC, sans-serif" font-size="9.8" fill="var(--hot)" font-weight="700">工具调用</text>
+<path d="M140 394 L528 394" stroke="var(--rule-soft)" stroke-width="1"/>
+<text x="170" y="416" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--ink)" font-weight="700" text-anchor="end">工具下发</text>
+<text x="182" y="416" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">按当前任务所属类别,只下发该类的十余个工具</text>
+<text x="170" y="434" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--ink)" font-weight="700" text-anchor="end">越界拦截</text>
+<text x="182" y="434" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">工具名不在该类清单内则不执行,驳回并附上合法名</text>
+<text x="170" y="452" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--ink)" font-weight="700" text-anchor="end">工具执行</text>
+<text x="182" y="452" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">调用执行侧执行动作,并将执行结果回显给模型</text>
+<path d="M90 466 L528 466" stroke="var(--rule-soft)" stroke-width="1"/>
+<text x="90" y="484" font-family="Manrope, PingFang SC, sans-serif" font-size="9.8" fill="var(--hot)" font-weight="700">多智能体</text>
+<path d="M140 480 L528 480" stroke="var(--rule-soft)" stroke-width="1"/>
+<text x="170" y="502" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--ink)" font-weight="700" text-anchor="end">sub-Agent下发</text>
+<text x="182" y="502" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">该类任务不下发车控工具,转交对应的子 Agent 处理</text>
+<path d="M90 516 L528 516" stroke="var(--rule-soft)" stroke-width="1"/>
+<text x="90" y="534" font-family="Manrope, PingFang SC, sans-serif" font-size="9.8" fill="var(--hot)" font-weight="700">上下文系统</text>
+<path d="M140 530 L528 530" stroke="var(--rule-soft)" stroke-width="1"/>
+<text x="170" y="552" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--ink)" font-weight="700" text-anchor="end">上下文压缩</text>
+<text x="182" y="552" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">KV 超 12000 token 切掉中段,保留system prompt 与最近窗口</text>
+<text x="170" y="570" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--ink)" font-weight="700" text-anchor="end">用完即弃</text>
+<text x="182" y="570" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">工具schema在下一轮丢弃,执行回执保留</text>
+<text x="170" y="588" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--muted)" font-weight="700" text-anchor="end">上下文总结与回写</text>
+<text x="182" y="588" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--muted)">规划中</text>
+<text x="170" y="606" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--muted)" font-weight="700" text-anchor="end">记忆沉淀</text>
+<text x="182" y="606" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--muted)">规划中</text>
+<text x="170" y="624" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--muted)" font-weight="700" text-anchor="end">记忆检索与读取</text>
+<text x="182" y="624" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--muted)">规划中</text>
 
 <!-- 车控工具清单目录 -->
 <rect x="596" y="238" width="280" height="88" rx="8" fill="var(--d-band)" stroke="var(--d-line)" stroke-width="1.1" stroke-dasharray="5 3"/>
@@ -295,7 +318,7 @@ tr.dim td{color:var(--muted)}
 <path d="M610 390 L862 390" stroke="var(--rule-soft)" stroke-width="1"/>
 <text x="610" y="408" font-family="Manrope, PingFang SC, sans-serif" font-size="9.3" fill="var(--body)">维护车辆状态的状态机，包括：</text>
 <text x="610" y="423" font-family="Manrope, PingFang SC, sans-serif" font-size="9.3" fill="var(--body)">每个部件的开关、数值和档位；</text>
-<text x="610" y="445" font-family="Manrope, PingFang SC, sans-serif" font-size="9.3" fill="var(--body)">根据编排层下发的指令执行动作、更新状态、判定执行结果等</text>
+<text x="610" y="445" font-family="Manrope, PingFang SC, sans-serif" font-size="9.3" fill="var(--body)">按 Agent Loop 的指令执行动作、更新状态、判定结果</text>
 <text x="610" y="480" font-family="Manrope, PingFang SC, sans-serif" font-size="9.0" fill="var(--muted)">车辆状态均以它为准,座舱UI只负责同步回显</text>
 <path d="M552 396 L592 396" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-end="url(#fe)"/>
 <text x="572" y="389" font-family="Manrope, PingFang SC, sans-serif" font-size="7.4" fill="var(--muted)" text-anchor="middle">下发动作</text>
@@ -303,35 +326,43 @@ tr.dim td{color:var(--muted)}
 <text x="572" y="431" font-family="Manrope, PingFang SC, sans-serif" font-size="7.4" fill="var(--muted)" text-anchor="middle">返回执行结果</text>
 
 
-<!-- 编排层 ↔ 推理层 -->
-<path d="M160 486 L160 546" stroke="var(--accent)" stroke-width="1.4" fill="none" marker-start="url(#fe2)" marker-end="url(#fe2)"/>
-<text x="172" y="508" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">送入音频,请求生成下一跳</text>
-<text x="172" y="523" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">返回本跳生成的文本</text>
-<path d="M470 486 L470 546" stroke="var(--d-line)" stroke-width="1.4" fill="none" marker-start="url(#fe)" marker-end="url(#fe)"/>
-<text x="482" y="508" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">送入待播报文本分片</text>
-<text x="482" y="523" font-family="Manrope, PingFang SC, sans-serif" font-size="9.4" fill="var(--body)">返回 200ms 一包的音频</text>
+<!-- Agent Loop ↔ Omni 模型 -->
+<path d="M200 646 L200 706" stroke="var(--accent)" stroke-width="1.4" fill="none" marker-end="url(#fe2)"/>
+<text x="210" y="662" font-family="Manrope, PingFang SC, sans-serif" font-size="8.4" fill="var(--ink)" font-weight="700">下发</text>
+<text x="210" y="678" font-family="Manrope, PingFang SC, sans-serif" font-size="8.4" fill="var(--body)">文本:上一步的执行回执、待播报文本分片</text>
+<text x="210" y="693" font-family="Manrope, PingFang SC, sans-serif" font-size="8.4" fill="var(--body)">语音:用户说话的音频</text>
+<path d="M430 706 L430 646" stroke="var(--accent)" stroke-width="1.4" fill="none" marker-end="url(#fe2)"/>
+<text x="440" y="662" font-family="Manrope, PingFang SC, sans-serif" font-size="8.4" fill="var(--ink)" font-weight="700">返回</text>
+<text x="440" y="678" font-family="Manrope, PingFang SC, sans-serif" font-size="8.4" fill="var(--body)">文本:这一次生成的文本</text>
+<text x="440" y="693" font-family="Manrope, PingFang SC, sans-serif" font-size="8.4" fill="var(--body)">语音:200ms/chunk 的合成音频</text>
 
-<!-- 模型引擎 -->
-<rect x="74" y="552" width="300" height="90" rx="8" fill="var(--d-band)" stroke="var(--accent)" stroke-width="1.6"/>
-<text x="90" y="578" font-family="Manrope, PingFang SC, sans-serif" font-size="12" fill="var(--ink)" font-weight="700">模型引擎</text>
-<path d="M90 588 L360 588" stroke="var(--rule-soft)" stroke-width="1"/>
-<text x="90" y="608" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--body)">模型为 Qwen3-Omni:输入原始音频,输出文本</text>
-<text x="90" y="626" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--body)">听写、意图判断、工具调用由模型一次输出</text>
-
-<!-- 语音合成 -->
-<rect x="406" y="552" width="250" height="90" rx="8" fill="var(--d-band)" stroke="var(--d-line)" stroke-width="1.1"/>
-<text x="420" y="578" font-family="Manrope, PingFang SC, sans-serif" font-size="12" fill="var(--ink)" font-weight="700">语音合成</text>
-<path d="M420 588 L642 588" stroke="var(--rule-soft)" stroke-width="1"/>
-<text x="420" y="608" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--body)">输入：纯文本,输出：音频</text>
-<text x="420" y="626" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--body)">流式合成:边合成边返回</text>
+<!-- Omni 模型：一次前向，五路输出 -->
+<rect x="74" y="712" width="592" height="156" rx="8" fill="var(--d-band)" stroke="var(--accent)" stroke-width="1.6"/>
+<text x="90" y="736" font-family="Manrope, PingFang SC, sans-serif" font-size="12" fill="var(--ink)" font-weight="700">Omni 模型</text>
+<path d="M90 746 L650 746" stroke="var(--rule-soft)" stroke-width="1"/>
+<rect x="88" y="756" width="180" height="46" rx="6" fill="none" stroke="var(--rule)" stroke-width="1"/>
+<text x="99" y="774" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--ink)" font-weight="700">ASR Head</text>
+<text x="99" y="790" font-family="Manrope, PingFang SC, sans-serif" font-size="8.6" fill="var(--body)">语音转文本</text>
+<rect x="280" y="756" width="180" height="46" rx="6" fill="none" stroke="var(--rule)" stroke-width="1"/>
+<text x="291" y="774" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--ink)" font-weight="700">Intent Head</text>
+<text x="291" y="790" font-family="Manrope, PingFang SC, sans-serif" font-size="8.6" fill="var(--body)">定位到具体的意图大类</text>
+<rect x="472" y="756" width="180" height="46" rx="6" fill="none" stroke="var(--rule)" stroke-width="1"/>
+<text x="483" y="774" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--ink)" font-weight="700">语音生成</text>
+<text x="483" y="790" font-family="Manrope, PingFang SC, sans-serif" font-size="8.6" fill="var(--body)">生成对应音频</text>
+<rect x="88" y="810" width="180" height="46" rx="6" fill="none" stroke="var(--rule)" stroke-width="1"/>
+<text x="99" y="828" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--ink)" font-weight="700">车控指令生成</text>
+<text x="99" y="844" font-family="Manrope, PingFang SC, sans-serif" font-size="8.6" fill="var(--body)">由大类 schema 生成车控指令和参数</text>
+<rect x="280" y="810" width="180" height="46" rx="6" fill="none" stroke="var(--rule)" stroke-width="1"/>
+<text x="291" y="828" font-family="Manrope, PingFang SC, sans-serif" font-size="9.6" fill="var(--ink)" font-weight="700">Duplex Head 判停</text>
+<text x="291" y="844" font-family="Manrope, PingFang SC, sans-serif" font-size="8.6" fill="var(--body)">给出当前用户指令输入的状态</text>
 </svg>
-<figcaption>这张图按<b>三层</b>看。<b>接入层</b>只有<b>座舱UI</b>:收音、断句、画车、放声音。<b>编排层</b>是唯一的大脑,座舱UI 只跟它说话,框里七行就是它这一轮要做的全部事情。<b>推理层</b>是两个吃 GPU 的服务,一个负责听和想,一个负责说,都只被编排层调用。四点值得补:<b>①</b> <b>没有独立的语音识别服务</b>,音频原样喂给模型,平时说的「ASR」是模型第一句话里的一条标签,不是一个单独的程序。<b>②</b> 编排层跟模型之间不是「一问一答」,是一条一直开着的会话,上一轮的记忆留在显存里 —— 这是整套东西为什么快的关键。<b>③</b> 右边两个<b>虚线框不是独立的服务</b>,是编排层自己带着的两块代码,归它调用、跟它一起启动。其中<b>「执行侧」才是那台被调用的车</b>,别和左上角的座舱UI 搞混:<b>车辆状态以执行侧为准,座舱UI 只做同步显示</b>。模型的动作只在执行侧生效,「成功 / 已经是这样了 / 没这个工具」这个结论也只由它给出,而且模型看得见的<b>只有它</b>;座舱UI 拿到通知之后只是把同一个动作再画一遍。所以<b>关掉座舱UI,整条链路照常跑完</b> —— 评测就是这么对着一批录音批量跑的;真要上车时把执行侧换成总线驱动,编排层这一侧一行都不用动。<b>④</b> 三个后端服务由<b>一条启动脚本</b>按「语音合成 → 模型引擎 → 编排层」的顺序拉起,缺模型或缺运行环境就直接报错退出,<b>没有「不接模型也能跑」的降级</b>。</figcaption>
+<figcaption>这张图按<b>三层</b>看。<b>接入层</b>只有<b>座舱UI</b>,它是<b>入口和镜像,不做理解</b>:收音上行、放声音、把执行侧的状态画出来 —— 判停、听写、意图、工具选型全在模型里,界面一件都不做。<b>Agent Loop</b>(本文其余小节里称「编排层」,同一个东西)是唯一的大脑,座舱UI 只跟它说话;框里按<b>任务管理 / 工具调用 / 多智能体 / 上下文系统</b>分四组;<b>灰掉的三行是规划中的,当前分支还没有</b>,其余各行都能在代码里对上。<b>推理层</b>就是<b>一个 Omni 模型</b>,<b>ASR Head / Intent Head / 车控指令生成 / Duplex Head 判停 / 语音生成</b> 五路输出全出自它。判停在模型里,不在界面上。四点值得补:<b>①</b> <b>没有独立的语音识别服务</b>,音频原样喂给模型,平时说的「ASR」是模型第一句话里的一条标签,不是一个单独的程序。<b>②</b> Agent Loop 跟模型之间不是「一问一答」,是一条一直开着的会话,上一轮的记忆留在显存里 —— 这是整套东西为什么快的关键。<b>③</b> 右边两个<b>虚线框不是独立的服务</b>,是 Agent Loop 自己带着的两块代码,归它调用、跟它一起启动。其中<b>「执行侧」才是那台被调用的车</b>,别和左上角的座舱UI 搞混:<b>车辆状态以执行侧为准,座舱UI 只做同步显示</b>。模型的动作只在执行侧生效,「成功 / 已经是这样了 / 没这个工具」这个结论也只由它给出,而且模型看得见的<b>只有它</b>;座舱UI 拿到通知之后只是把同一个动作再画一遍。所以<b>关掉座舱UI,整条链路照常跑完</b> —— 评测就是这么对着一批录音批量跑的;真要上车时把执行侧换成总线驱动,Agent Loop 这一侧一行都不用动。<b>④</b> 三个后端服务由<b>一条启动脚本</b>按「语音合成 → 语音理解 → Agent Loop」的顺序拉起,缺模型或缺运行环境就直接报错退出,<b>没有「不接模型也能跑」的降级</b>。</figcaption>
 </figure>
 
 <h3 style="font-family:'Familjen Grotesk',system-ui,sans-serif;font-size:16px;font-weight:600;color:var(--ink);margin:26px 0 10px">二 · 一句话进来，会经过什么、最后变成什么</h3>
 <figure>
 <div class="fig-scroll">
-<svg viewBox="0 0 880 900" role="img" aria-label="一句 user query 进入 MoLA-Omni；Intent Head 判出三条分支之一，ASR Head 给出规整后的 query 文本。dialog 分支由 MoLA-Omni 直接续写成 agent response；tool 分支装载唯一工具的 Schema，回到 MoLA-Omni 生成调用，执行后拿回 tool response，再由 rules 或 MoLA-Omni 播报成 agent response；subagent 分支交给子代理，产出 subagent response。同一个 MoLA-Omni 在一轮里被回到两到三次；tool 分支的工具名和参数由模型在同一次输出里给出，编排层只做切分与闭集校验。">
+<svg viewBox="0 0 880 900" role="img" aria-label="一句 user query 进入 MoLA-Omni；Intent Head 判出三条分支之一，ASR Head 给出规整后的 query 文本。dialog 分支由 MoLA-Omni 直接续写成 agent response；tool 分支装载唯一工具的 Schema，回到 MoLA-Omni 生成调用，执行后拿回 tool response，再由 rules 或 MoLA-Omni 播报成 agent response；subagent 分支交给sub-Agent，产出 subagent response。同一个 MoLA-Omni 在一轮里被回到两到三次；tool 分支的工具名和参数由模型在同一次输出里给出，编排层只做切分与闭集校验。">
 <defs><marker id="fc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--d-line)"/></marker><marker id="fc2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"/></marker></defs>
 <rect x="347" y="18" width="150" height="32" rx="16" fill="var(--d-band)" stroke="var(--d-line)" stroke-width="1.3"/>
 <text x="422" y="38.5" font-family="Manrope, PingFang SC, sans-serif" font-size="12.5" fill="var(--ink)" text-anchor="middle" font-weight="700">user query</text>
@@ -429,7 +460,7 @@ tr.dim td{color:var(--muted)}
 <text x="608" y="684" font-family="Manrope, PingFang SC, sans-serif" font-size="10.5" fill="var(--ink)" text-anchor="start" font-weight="700">播报分流的条件</text>
 <text x="608" y="702" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="start">全部任务都是工具调用、且全部成功</text>
 <text x="608" y="717" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="start">  → 走 rules 模板，省一次模型往返</text>
-<text x="608" y="732" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="start">沾上对话 / 子代理 / 任何失败或空结果</text>
+<text x="608" y="732" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="start">沾上对话 / sub-Agent / 任何失败或空结果</text>
 <text x="608" y="747" font-family="Manrope, PingFang SC, sans-serif" font-size="10" fill="var(--muted)" text-anchor="start">  → 回 MoLA-Omni，基于真实回执组织回答</text>
 <line x1="40" y1="822" x2="866" y2="822" stroke="var(--rule)" stroke-width="1"/>
 <rect x="40" y="839" width="16" height="12" rx="3" fill="var(--hot-soft)" stroke="var(--hot)" stroke-width="2"/>
