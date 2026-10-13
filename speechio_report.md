@@ -1,3 +1,15 @@
+| 模型 | SpeechIO CER (%) |
+|---|---:|
+| Qwen3-ASR-Flash (API) | 2.62 |
+| Qwen3-ASR-1.7B | 2.88 |
+| Doubao-ASR | 2.93 |
+| Qwen3-ASR-0.6B | 3.44 |
+| Gemini-2.5-Pro | 5.30 |
+| Whisper-large-v3 | 7.56 |
+| GPT-4o-Transcribe | 12.86 |
+
+> 来源：Qwen3-ASR Technical Report (arXiv:2601.21337), Table 3 / Table A.1。论文未披露所用 SpeechIO 子集及文本归一化方式，不可与本地评测结果直接比较。
+
 # SpeechIO ASR 全量 27 集 DI 批跑评测报告
 
 - **日期**:2026-10-12 ~ 10-13(job code 0,一次跑完)
