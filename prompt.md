@@ -1,82 +1,88 @@
-好，这次把整条链路从 HTTP 请求 → token 序列完整追一遍。先看文件规模和实际客户端代码：
+好问题——长会话下这个直接决定转写质量。文档里有一句话提到 eviction，我去查实现细节：
 
-examples 里只有 minicpmo/joyvl 的。找 qwen3_omni duplex 的 HTTP 入口和 `duplex_prefix_token_ids` 的实际消费方：
+rg 输出被截断得厉害，直接读 `scheduler_offsets.py`——名字就是为这事准备的：
 
-找到关键消费方了。看客户端示例（`examples/online_serving/qwen3_omni/`、`vllm_omni/examples/qwen3_omni_duplex/uds.py`）和 runtime.py：
+这只是偏移换算。驱逐逻辑应该在 fullduplex 通用层，往上层搜：
 
-客户端这边清楚了：`uds.py` 发的是 OpenAI Realtime 风格事件（`session.update` + `input_audio_buffer.append`），完全不碰 token。现在追服务端怎么把 `instructions`/`context_text`/`task_type` 变成最终 token 序列——读 runtime.py 和 format_policy.py：
+只在文档和别的模型（joyvl）里出现。看 fullduplex 的 DESIGN.md 和 engine/core 层：
 
-核心拼装函数找到了（`runtime.py` 的 `plan_append`）。再确认两个细节：worker 怎么回放上一 chunk 的尾巴、音频特征怎么注入：
+`completed_append_limit: 256` 浮出水面了。看这段上下文：
 
-链路全部查清了。**结论先说：这个 prompt 不是一段一次性拼好的文本，而是“前缀拼一次 + 每个 240ms chunk 增量拼一小块、靠 KV cache 会话续起来”的流式结构。你草图中间的 `<|im_start|>user`/`<|im_start|>assistant` 两个轮次在整个代码库中根本不存在——那是 ChatML 的思维惯性，真实格式里没有。**
+`completed_appends` 的 256 上限只是记账元数据的 LRU，不碰模型序列。真正的序列控制要看 `persistent_kv_per_session` 的实现：
 
-## 拼装的完整链路（五层）
+实现层面是空的——这三个字段只存在于 draft yaml，没有任何代码引用。查引擎层怎么管跨 append 的 KV：
 
-**① 客户端**（`vllm_omni/examples/qwen3_omni_duplex/uds.py:195-224`）——发的是 OpenAI Realtime 风格事件，完全不碰 token：
+experimental/fullduplex 这套是骨架。实际注册的 pipeline 在 `model_executor/models/qwen3_omni/duplex_pipeline`：
 
-```python
-session.update: {
-  instructions: "You are a full-duplex omni-modal assistant...",  # ← 你草图第一块的正文
-  extra_body: {
-    qwen3_omni_native_duplex: True,
-    context_text: instruction,          # ← "Please listen to the audio and transcribe..."
-    task_type: "audio2text",            # ← 由 modality 动态拼成 f"{modality}2text"
-  }
-}
-input_audio_buffer.append × N   # base64 PCM16，240ms/3840样本一块
-input_audio_buffer.commit
-```
+这些是 audio tower 内部分窗，不是序列驱逐。看 `qwen3_omni_duplex.py` 模型类和 `intermediate.py` 怎么维护持久序列：
 
-**② serving_adapter.py:215-267** —— 把文本 encode 成 token 存进 runtime_config：
+模型类只是 re-export。历史 KV 一定在引擎侧。先读你们自己写的调试记录——最接近实际运行情况：
 
-```python
-prefix_tokens = [<|im_start|>] + tokenizer.encode(instructions) + [<|im_end|>, <|task_audio2text|>]   # :234-244
-duplex_context_text_token_ids = tokenizer.encode(context_text)   # 整条指令一次 encode :257-266
-```
+评测文档没有架构信息。回到 vLLM 核心找 duplex 会话的 KV 管理：
 
-**③ runtime.py `plan_append`（:160-350）** —— 每来一个 240ms chunk 调一次（`seq` 从 1 计），拼本次增量。关键逻辑（:270-310）：
+vllm 核心无 duplex 代码。找 `replayed_chunk_token_ids` 的生产方——谁维护跨 append 的历史：
 
-- `seq==1`：`exact_ids = prefix_tokens`（前缀只在这一块出现，唯一带 ChatML 的地方）
-- 追加 `<|chunk_bos|>`（它同时是 scheduler 记账 token，`:252-256` 先用 `[<|chunk_bos|>]×budget` 占位再替换成精确序列）
-- 追加 `<|audio_start|> <|audio|>×3 <|audio_end|>`（纯占位）
-- **context_text 按块切片流式注入**：`chunk_index = seq-1`，取 `all_context_ids[chunk_index*500 : (chunk_index+1)*500]`（:194-197），非空才包上 `<|context_text_start|>...<|context_text_end|>`。指令短的话实际上 chunk 1 就注完了——不是“指令先到、音频后到”，而是和音频同 chunk 交织
-- 追加 `<|agent_text_start|>`（解码锚点，到此为止）
+核心调度器找到了。看它的会话序列管理和长度限制：
 
-**④ worker.py（:237-343）** —— 补上 runtime 层没有的东西，才是真正喂进模型的序列：
+`OmniARScheduler` 继承 vLLM 原生调度器，duplex 请求是持续增长的同一个 Request。读 duplex state 处理段：
 
-- `seq>1` 时开头回放上一 chunk 的收尾：`replayed_chunk_token_ids`，或兼容模式下 `[上个chunk产的agent token] + <|agent_text_end|> <|action_start|> <|action_end|> <|chunk_eos|>`（:240-266）——这就是"每 chunk 的结尾”从哪来的
-- `<|audio|>` 占位处**真的过 audio tower**：有音频 encode 真特征，非语音 chunk encode 静音零波形，恒 3 行 embedding（:284-318，行数不匹配直接报错）
+`_update_request_as_session` 是关键——查它的实现，确认超长时的行为：
 
-**⑤ 输出** —— 模型在 `<|agent_text_start|>` 后产 **1 个 token**：transcript 文本 token，或 `<|listen|>`（沉默）。`decide_output`（runtime.py:352-496）按这个判定 listen/speak。
+逻辑清楚了。最后确认 vLLM 原生 session 更新对超长的处理：
 
-## 模型逻辑上看到的完整序列（修正版草图）
+vllm 核心是外部依赖，找它的安装位置：
+
+当前环境的 vllm 0.11 太老，fork 的核心不在本机。看测试文件里有没有超长场景的定义：
+
+查证完毕，证据链完整了。先存个档，然后给你完整结论：
+
+查证结论：**不压缩、也不丢——历史全量累积在 KV cache 里。文档里写的“丢最老 chunk”策略是个没落地的 draft 承诺。**
+
+## 实际机制：KV 全量累积
+
+duplex 会话在引擎里是 **vLLM streaming session**：同一个 Request 从会话开始活到结束，每次 append 通过 `StreamingUpdate` 把增量接到已有序列上（`omni_ar_scheduler.py:1018` `_update_request_as_session`：`update.prompt_token_ids = [回放尾巴] + [新 chunk 增量]`，KV cache 继续复用）。所以序列单调增长：
 
 ```text
-<|im_start|>系统提示<|im_end|><|task_audio2text|>          ← 仅一次
-<|chunk_bos|> <|audio_start|>[A₁]<|audio_end|>
-  [<|context_text_start|>指令token片1<|context_text_end|>]
-  <|agent_text_start|> g₁ <|agent_text_end|> <|action_start|> <|action_end|> <|chunk_eos|>
-<|chunk_bos|> <|audio_start|>[A₂]<|audio_end|>
-  [<|context_text_start|>指令token片2<|context_text_end|>]
-  <|agent_text_start|> g₂ <|agent_text_end|> <|action_start|> <|action_end|> <|chunk_eos|>
-...（几百块）
+prefix + chunk₁ + chunk₂ + ... + chunkₙ + 新 chunk     ← 全在 KV 里，一个都不丢
 ```
 
-- `[Aᵢ]` = 第 i 块的 3 行音频 embedding；`gᵢ` = 第 i 块模型产的 1 个 agent token（transcript 的一个 token 或 `<|listen|>`）
-- transcript = 所有 `gᵢ` 里的文本 token 依序拼接，说的结束信号是 `<|text_break|>`，不是任何 `<|im_end|>`
+每个 chunk 的 12 个 token（结构 9 + 音频占位 3）+ agent 产物永久驻留。
 
-## 对照你的草图，三处修正
+## 文档声称的 eviction：未实现
 
-| 你的草图 | 实际情况 |
+`CHUNK_LAYOUT.md:11-14` 写着 *"evict the oldest complete chunks until the new chunk fits. The immutable prefix must always be retained"*，但我把它和实现逐层对过，**没有落地**：
+
+| 证据 | 结果 |
 |---|---|
-| `<|im_start|>` 裸前缀 + system 文本 + `<|im_end|>` + `<|task_audio2text|>` | ✅ 对，这就是 `prefix_tokens`，且只出现一次 |
-| `<|im_start|>user` 包住音频和 context_text，`<|im_end|>` 收尾 | ❌ 不存在 user 轮。音频走 `<|audio_start|><|audio|>×3`，context_text 走 `<|context_text_start|>...`，都在 `<|chunk_bos|>` 块内 |
-| `<|im_start|>assistant` 开放结尾 | ❌ 不存在 assistant 轮。解码锚点是每块的 `<|agent_text_start|>`，每块产 1 token；块间由 `<|agent_text_end|><|action_start|><|action_end|><|chunk_eos|>` 收尾并回放到下一块 |
+| 配置文件名 | 就叫 `runtime.draft.yaml`——草稿 |
+| `persistent_kv_per_session` / `prefill_prefix_once` / `decode_anchor_token` 三个 worker 字段 | 全代码库**零引用**（只有 yaml 里有） |
+| `runtime.py` / `worker.py` / `omni_ar_scheduler.py` / `format_policy.py` | 无任何 chunk 驱逐/裁剪/窗口代码 |
+| `duplex_session.py:92` 的 `completed_append_limit=256` | 只是对完成 append 的**记账结果**（stage_results 元数据）做 LRU 清理，不碰模型序列 |
+| 测试 | 无超长/驱逐 case |
 
-至于“为啥最后没有 im_end”——在这个格式里问法要反过来：`<|im_end|>` 全序列只在**前缀**出现一次（给 system 收尾），它本来就不承担“结束一轮对话”的职责；对话的节奏信号全部由 agent token 自己承载（`<|listen|>`/`<|speak|>`/`<|text_break|>`）。这也是 duplex 和普通 ChatML 模型的本质区别：没有“轮”的概念，只有每 240ms 一个决策点的状态机。
+唯一诚实的不确定性：omni 层是个插件包，fork 的 vllm 核心源码本机没有，不排除核心里有部分实现——但 omni 层的 token 预算会计和偏移换算（`scheduler_offsets.py`）都完全没有为驱逐做配套，真有驱逐早就对不齐了。
+
+## 那超长了会怎样
+
+没有优雅降级，两条路都是 vLLM 原生行为：
+
+- **KV cache 空间不够** → preempt：整个 session 换出、腾出空间后**全部重算**（不是丢最老的）
+- **逼近 `max_model_len`** → 硬失败，会话报错
+
+## 给你们 asreval 场景的容量账
+
+纯音频会话 ≈ **50 token/s**（12 token / 240ms chunk）：
+
+- 32k 上下文 ≈ **11 分钟**音频到顶
+- 有视频再叠 ~25 token/s（每 4 chunk 一帧 × 100 token），掉到 ~7 分钟
+- context_text 溢出不丢（`runtime.py:194-197` 切片续流是实现了的），但一般指令 chunk 1 就注完了，可忽略
+
+好消息是转写任务天然抗“遗忘”：模型**边听边写**（每 chunk 产 1 个 token），transcript 在音频进来时就产出了，历史音频的 KV 属于“用完即弃”性质——所以就算哪天真实现了 eviction，对转写几乎无损。真正的风险只有一个：**长音频跑到后半段撞 max_model_len 直接崩**。所以 30 分钟以上的音频样本必须切段评测，别指望服务端自己处理。
+
+这个结论我已经存进 memory 了（`vllm-mola-duplex-seqlen-no-eviction`），下次做长音频评测时会直接提醒。
 
 <options>
-    <option>把这个机制整理成文档归档到 asreval 目录</option>
-    <option>对照这个格式检查我们 asreval 发的请求</option>
+    <option>帮我把 asreval 数据集按 11 分钟阈值过一遍，标出会超长的样本</option>
+    <option>试着把 evict oldest chunks 策略实现出来</option>
     <option>清楚了，不用继续</option>
 </options>
