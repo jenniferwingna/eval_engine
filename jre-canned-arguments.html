@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JRE 罐头论点一页纸 · 备考</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@400;500;700&family=Noto+Serif+HK:wght@500;700;900&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+:root{--bg:#EDEFF3;--surface:#FFF;--surface-2:#F5F7FA;--surface-3:#E8ECF3;
+--text:#141C2E;--dim:#54607A;--faint:#8892A6;--line:#D6DBE5;--line2:#B4BDCE;
+--navy:#1B2C4F;--zh:#8A3324;--zh-bg:#F8E8E3;--en:#1D4E89;--en-bg:#E5ECF7;
+--jade:#1B6A55;--jade-bg:#E2EFE9;--amber:#87560A;--amber-bg:#F8ECD6;--stamp:#A32A22}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){
+--bg:#0D121C;--surface:#151C2A;--surface-2:#1A2231;--surface-3:#212A3B;
+--text:#E4E9F2;--dim:#9CA8BE;--faint:#727F97;--line:#273245;--line2:#3A4660;
+--navy:#A2BAE7;--zh:#E79484;--zh-bg:#331C17;--en:#8FB4E8;--en-bg:#15263C;
+--jade:#5FC5A2;--jade-bg:#11332B;--amber:#E3AC4F;--amber-bg:#332710;--stamp:#EE8175}}
+:root[data-theme="dark"]{
+--bg:#0D121C;--surface:#151C2A;--surface-2:#1A2231;--surface-3:#212A3B;
+--text:#E4E9F2;--dim:#9CA8BE;--faint:#727F97;--line:#273245;--line2:#3A4660;
+--navy:#A2BAE7;--zh:#E79484;--zh-bg:#331C17;--en:#8FB4E8;--en-bg:#15263C;
+--jade:#5FC5A2;--jade-bg:#11332B;--amber:#E3AC4F;--amber-bg:#332710;--stamp:#EE8175}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--text);margin:0;font-size:15px;line-height:1.75;overflow-wrap:break-word;
+font-family:"Noto Sans HK","PingFang HK","Microsoft JhengHei",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-family:"Noto Serif HK",Georgia,serif;margin:0;text-wrap:balance}
+code{font-family:"IBM Plex Mono",monospace;font-size:.92em;background:var(--surface-3);padding:1px 5px;border-radius:3px}
+.wrap{max-width:980px;margin:0 auto;padding:0 22px 80px}
+header{background:var(--surface);border-bottom:2px solid var(--navy)}
+.hd{max-width:980px;margin:0 auto;padding:24px 22px 20px}
+.hd .back{font-size:13px;color:var(--dim);text-decoration:none}
+.hd .back:hover{color:var(--en)}
+.hd h1{font-size:27px;font-weight:900;letter-spacing:.04em;margin-top:8px}
+.hd .sub{font-family:"Noto Serif HK",Georgia,serif;color:var(--dim);font-size:14.5px;margin-top:6px}
+.stats{display:flex;gap:26px;margin-top:14px}
+.stats b{display:block;font-family:"IBM Plex Mono",monospace;font-size:22px;color:var(--navy);font-weight:600;line-height:1.2}
+.stats span{font-size:12px;color:var(--faint)}
+.hsec{margin-top:38px}
+.hsec>h2{font-size:19px;font-weight:700;display:flex;align-items:baseline;gap:10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.hsec>h2 .no{font-family:"IBM Plex Mono",monospace;color:var(--en);font-size:16px}
+.hsec>h2 .hint{margin-left:auto;font-size:12px;color:var(--faint);font-family:"Noto Sans HK",sans-serif;font-weight:400}
+.note{font-size:13.5px;color:var(--dim);margin:10px 0 0;max-width:80ch}
+.tbl{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%;margin:10px 0;border:1px solid var(--line);background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;line-height:1.65}
+th{background:var(--surface-2);color:var(--dim);font-weight:600;text-align:left;white-space:nowrap}
+th,td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:none}
+.tbl td:first-child{white-space:nowrap;color:var(--dim);font-family:"IBM Plex Mono","Noto Sans HK",monospace;font-size:12.5px}
+.callout{margin:14px 0;padding:12px 16px;border-radius:6px;font-size:14px;line-height:1.7}
+.callout .t{font-weight:700;display:block;margin-bottom:4px;font-family:"Noto Serif HK",Georgia,serif}
+.callout.info{background:var(--en-bg);color:var(--text);border-left:4px solid var(--en)}
+.callout.info .t{color:var(--en)}
+.callout.neutral{background:var(--surface-2);border-left:4px solid var(--line2)}
+.callout.neutral .t{color:var(--dim)}
+.callout.success{background:var(--jade-bg);border-left:4px solid var(--jade)}
+.callout.success .t{color:var(--jade)}
+details.box{margin:12px 0;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+details.box>summary{cursor:pointer;padding:10px 16px;font-size:13.5px;font-weight:500;color:var(--en);list-style:none;user-select:none}
+details.box>summary::-webkit-details-marker{display:none}
+details.box>summary::before{content:"▸";display:inline-block;margin-right:8px;transition:transform .15s;color:var(--faint)}
+details.box[open]>summary::before{transform:rotate(90deg)}
+details.box>summary .cnt{margin-left:8px;font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--faint);border:1px solid var(--line);border-radius:10px;padding:0 8px}
+details.box .body{padding:0 16px 14px}
+details.box .tbl{margin:4px 0 0}
+/* 罐头详解卡片 */
+.ci{padding:12px 2px 10px;border-top:1px dashed var(--line)}
+.ci:first-child{border-top:none;padding-top:2px}
+.ci h4{font-size:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ci .q{font-weight:500;color:var(--dim);font-size:12.5px}
+.ci .tag{font-family:"IBM Plex Mono","Noto Sans HK",monospace;font-size:12px;font-weight:600;border-radius:4px;padding:1px 8px;white-space:nowrap}
+.ci .tag.t2{color:var(--amber);border:1px solid var(--amber);background:var(--amber-bg)}
+.ci .tag.t3{color:var(--jade);border:1px solid var(--jade);background:var(--jade-bg)}
+.ci .row{font-size:13.5px;margin:5px 0;line-height:1.7}
+.ci .row>b{color:var(--zh)}
+.ci ol{margin:4px 0 6px;padding-left:22px;font-size:13.5px}
+.ci ol li{margin:2px 0}
+.ci .eg{color:var(--dim)}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--faint)}
+/* 脑图 */
+.mm{width:100%;height:auto;display:block;margin:8px 0 4px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.mm text{font-family:"Noto Sans HK","PingFang HK","Microsoft JhengHei",sans-serif;user-select:none}
+.mm .br-yellow{--c:#87560A}.mm .br-orange{--c:#C2410C}.mm .br-green{--c:#1B6A55}
+.mm .br-red{--c:#A32A22}.mm .br-purple{--c:#6C3FA0}.mm .br-blue{--c:#1D4E89}
+.mm .edge{fill:none;stroke:var(--c);stroke-width:2.5;stroke-opacity:.6;stroke-linecap:round}
+.mm .panel{fill:var(--c);fill-opacity:.055;stroke:var(--c);stroke-opacity:.4;stroke-width:1.2}
+.mm .hdr{fill:var(--c);fill-opacity:.16}
+.mm .hdrTxt{fill:var(--c);font-size:14px;font-weight:700}
+.mm .badge{fill:var(--c);fill-opacity:.22;stroke:var(--c);stroke-width:1}
+.mm .badgeTxt{fill:var(--c);font-size:11px;font-weight:700}
+.mm .clu{fill:var(--c);fill-opacity:.12;stroke:var(--c);stroke-opacity:.55}
+.mm .cluTxt{fill:var(--c);font-size:11.5px;font-weight:600}
+.mm .chip{fill:var(--surface);stroke:var(--c);stroke-opacity:.5}
+.mm .chipTxt{fill:var(--text);font-size:11.5px}
+.mm .hub{fill:var(--navy)}
+.mm .hubT1{fill:#FFF;font-size:15px;font-weight:700}
+.mm .hubT2{fill:#FFF;font-size:12.5px;font-weight:700}
+.mm .hubT3{fill:#FFF;font-size:9.5px;opacity:.85}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .mm .br-yellow{--c:#E3AC4F}
+:root:not([data-theme="light"]) .mm .br-orange{--c:#F08C4A}
+:root:not([data-theme="light"]) .mm .br-green{--c:#5FC5A2}
+:root:not([data-theme="light"]) .mm .br-red{--c:#EE8175}
+:root:not([data-theme="light"]) .mm .br-purple{--c:#B49BEB}
+:root:not([data-theme="light"]) .mm .br-blue{--c:#8FB4E8}
+:root:not([data-theme="light"]) .mm .hubT1,:root:not([data-theme="light"]) .mm .hubT2,:root:not([data-theme="light"]) .mm .hubT3{fill:#0D121C}}
+:root[data-theme="dark"] .mm .br-yellow{--c:#E3AC4F}
+:root[data-theme="dark"] .mm .br-orange{--c:#F08C4A}
+:root[data-theme="dark"] .mm .br-green{--c:#5FC5A2}
+:root[data-theme="dark"] .mm .br-red{--c:#EE8175}
+:root[data-theme="dark"] .mm .br-purple{--c:#B49BEB}
+:root[data-theme="dark"] .mm .br-blue{--c:#8FB4E8}
+:root[data-theme="dark"] .mm .hubT1,:root[data-theme="dark"] .mm .hubT2,:root[data-theme="dark"] .mm .hubT3{fill:#0D121C}
+@media(max-width:600px){.hd h1{font-size:22px}.stats{gap:16px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="hd">
+    <a class="back" href="./">← 返回议题总览</a>
+    <h1>JRE 罐头论点一页纸</h1>
+    <div class="sub">16 个议题 · 64 篇范文交叉比对后，真正「来来去去都在用」的论点与打法</div>
+    <div class="stats">
+      <div><b>16</b><span>议题</span></div>
+      <div><b>64</b><span>篇范文</span></div>
+      <div><b>30+</b><span>条万能罐头</span></div>
+    </div>
+  </div>
+</header>
+<div class="wrap">
+
+<div class="callout info">
+  <span class="t">考场使用流程</span>
+  审题一分钟 → 「破题三件套」开第一段 → 从②选 2–3 个诊断罐头 → 每项措施从③选并标明回扣哪个诊断 → 驳论从④选一刀 → 游说说从⑤选对象那行 → 英文卷直接套⑥骨架。⑦是考前 10 分钟扫读用。
+</div>
+
+<div class="hsec">
+  <h2><span class="no">图</span>罐头论点脑图<span class="hint">中心五字诀 → 六色六支 → 关键词；配合「重画复习法」</span></h2>
+  <svg class="mm" viewBox="0 0 1440 1000" role="img" aria-label="JRE 罐头论点脑图">
+    <!-- 连线（先画线，再画面板） -->
+    <path class="edge br-yellow" d="M720 456 L720 184"/>
+    <path class="edge br-orange" d="M804 486 L880 430"/>
+    <path class="edge br-green" d="M636 486 L520 420"/>
+    <path class="edge br-purple" d="M660 548 Q560 700 432 779"/>
+    <path class="edge br-blue" d="M745 544 Q880 700 985 725"/>
+    <path class="edge br-red" d="M720 544 L720 812"/>
+
+    <!-- 破题（黄） -->
+    <g class="br-yellow">
+      <rect class="panel" x="480" y="36" width="480" height="148" rx="10"/>
+      <rect class="hdr" x="496" y="51" width="120" height="30" rx="15"/>
+      <circle class="badge" cx="512" cy="66" r="11"/>
+      <text class="badgeTxt" x="512" y="66" text-anchor="middle" dominant-baseline="central">拆</text>
+      <text class="hdrTxt" x="530" y="66" dominant-baseline="central">破题三件套</text>
+      <rect class="chip" x="516" y="104" width="120" height="30" rx="8"/>
+      <text class="chipTxt" x="576" y="119" text-anchor="middle" dominant-baseline="central">拆政策目的</text>
+      <rect class="chip" x="660" y="104" width="120" height="30" rx="8"/>
+      <text class="chipTxt" x="720" y="119" text-anchor="middle" dominant-baseline="central">立评估标准</text>
+      <rect class="chip" x="804" y="104" width="120" height="30" rx="8"/>
+      <text class="chipTxt" x="864" y="119" text-anchor="middle" dominant-baseline="central">附条件表态</text>
+    </g>
+
+    <!-- 诊断（橙） -->
+    <g class="br-orange">
+      <rect class="panel" x="880" y="232" width="520" height="428" rx="10"/>
+      <rect class="hdr" x="896" y="248" width="106" height="30" rx="15"/>
+      <circle class="badge" cx="912" cy="263" r="11"/>
+      <text class="badgeTxt" x="912" y="263" text-anchor="middle" dominant-baseline="central">找</text>
+      <text class="hdrTxt" x="930" y="263" dominant-baseline="central">诊断罐头</text>
+
+      <rect class="clu" x="900" y="292" width="112" height="26" rx="13"/>
+      <text class="cluTxt" x="956" y="305" text-anchor="middle" dominant-baseline="central">总量与成本·找</text>
+      <rect class="chip" x="914" y="324" width="64" height="30" rx="8"/>
+      <text class="chipTxt" x="946" y="339" text-anchor="middle" dominant-baseline="central">错配论</text>
+      <rect class="chip" x="914" y="360" width="117" height="30" rx="8"/>
+      <text class="chipTxt" x="972.5" y="375" text-anchor="middle" dominant-baseline="central">一次性vs经常性</text>
+      <rect class="chip" x="914" y="396" width="128" height="30" rx="8"/>
+      <text class="chipTxt" x="978" y="411" text-anchor="middle" dominant-baseline="central">局部成本分散效益</text>
+
+      <rect class="clu" x="900" y="440" width="112" height="26" rx="13"/>
+      <text class="cluTxt" x="956" y="453" text-anchor="middle" dominant-baseline="central">结构断裂·找</text>
+      <rect class="chip" x="914" y="472" width="76" height="30" rx="8"/>
+      <text class="chipTxt" x="952" y="487" text-anchor="middle" dominant-baseline="central">责任断点</text>
+      <rect class="chip" x="914" y="508" width="89" height="30" rx="8"/>
+      <text class="chipTxt" x="958.5" y="523" text-anchor="middle" dominant-baseline="central">一次性买家</text>
+      <rect class="chip" x="914" y="544" width="76" height="30" rx="8"/>
+      <text class="chipTxt" x="952" y="559" text-anchor="middle" dominant-baseline="central">悬崖效应</text>
+      <rect class="chip" x="914" y="580" width="89" height="30" rx="8"/>
+      <text class="chipTxt" x="958.5" y="595" text-anchor="middle" dominant-baseline="central">固定成本论</text>
+
+      <rect class="clu" x="1130" y="292" width="112" height="26" rx="13"/>
+      <text class="cluTxt" x="1186" y="305" text-anchor="middle" dominant-baseline="central">指标与强制·拆</text>
+      <rect class="chip" x="1144" y="324" width="117" height="30" rx="8"/>
+      <text class="chipTxt" x="1202.5" y="339" text-anchor="middle" dominant-baseline="central">假指标vs真指标</text>
+      <rect class="chip" x="1144" y="360" width="89" height="30" rx="8"/>
+      <text class="chipTxt" x="1188.5" y="375" text-anchor="middle" dominant-baseline="central">强制≠质量</text>
+
+      <rect class="clu" x="1130" y="404" width="112" height="26" rx="13"/>
+      <text class="cluTxt" x="1186" y="417" text-anchor="middle" dominant-baseline="central">人心诱因·算</text>
+      <rect class="chip" x="1144" y="436" width="76" height="30" rx="8"/>
+      <text class="chipTxt" x="1182" y="451" text-anchor="middle" dominant-baseline="central">诱因分析</text>
+      <rect class="chip" x="1144" y="472" width="89" height="30" rx="8"/>
+      <text class="chipTxt" x="1188.5" y="487" text-anchor="middle" dominant-baseline="central">选择的前提</text>
+      <rect class="chip" x="1144" y="508" width="89" height="30" rx="8"/>
+      <text class="chipTxt" x="1188.5" y="523" text-anchor="middle" dominant-baseline="central">隐藏受害者</text>
+      <rect class="chip" x="1144" y="544" width="102" height="30" rx="8"/>
+      <text class="chipTxt" x="1195" y="559" text-anchor="middle" dominant-baseline="central">不行动的代价</text>
+    </g>
+
+    <!-- 措施（绿） -->
+    <g class="br-green">
+      <rect class="panel" x="40" y="290" width="480" height="400" rx="10"/>
+      <rect class="hdr" x="56" y="306" width="106" height="30" rx="15"/>
+      <circle class="badge" cx="72" cy="321" r="11"/>
+      <text class="badgeTxt" x="72" y="321" text-anchor="middle" dominant-baseline="central">留</text>
+      <text class="hdrTxt" x="90" y="321" dominant-baseline="central">措施罐头</text>
+
+      <rect class="clu" x="60" y="350" width="87" height="26" rx="13"/>
+      <text class="cluTxt" x="103.5" y="363" text-anchor="middle" dominant-baseline="central">分配与次序</text>
+      <rect class="chip" x="74" y="382" width="76" height="30" rx="8"/>
+      <text class="chipTxt" x="112" y="397" text-anchor="middle" dominant-baseline="central">风险分级</text>
+      <rect class="chip" x="74" y="418" width="76" height="30" rx="8"/>
+      <text class="chipTxt" x="112" y="433" text-anchor="middle" dominant-baseline="central">工具阶梯</text>
+      <rect class="chip" x="74" y="454" width="102" height="30" rx="8"/>
+      <text class="chipTxt" x="125" y="469" text-anchor="middle" dominant-baseline="central">补位而非取代</text>
+
+      <rect class="clu" x="60" y="498" width="87" height="26" rx="13"/>
+      <text class="cluTxt" x="103.5" y="511" text-anchor="middle" dominant-baseline="central">落地执行</text>
+      <rect class="chip" x="74" y="530" width="76" height="30" rx="8"/>
+      <text class="chipTxt" x="112" y="545" text-anchor="middle" dominant-baseline="central">试点先行</text>
+      <rect class="chip" x="74" y="566" width="102" height="30" rx="8"/>
+      <text class="chipTxt" x="125" y="581" text-anchor="middle" dominant-baseline="central">中央集中专业</text>
+      <rect class="chip" x="74" y="602" width="115" height="30" rx="8"/>
+      <text class="chipTxt" x="131.5" y="617" text-anchor="middle" dominant-baseline="central">降负担不降标准</text>
+
+      <rect class="clu" x="290" y="350" width="87" height="26" rx="13"/>
+      <text class="cluTxt" x="333.5" y="363" text-anchor="middle" dominant-baseline="central">防弊与信任</text>
+      <rect class="chip" x="304" y="382" width="102" height="30" rx="8"/>
+      <text class="chipTxt" x="355" y="397" text-anchor="middle" dominant-baseline="central">防滥权三件套</text>
+      <rect class="chip" x="304" y="418" width="89" height="30" rx="8"/>
+      <text class="chipTxt" x="348.5" y="433" text-anchor="middle" dominant-baseline="central">公开换信任</text>
+      <rect class="chip" x="304" y="454" width="102" height="30" rx="8"/>
+      <text class="chipTxt" x="355" y="469" text-anchor="middle" dominant-baseline="central">指标触发放逐</text>
+
+      <rect class="clu" x="290" y="498" width="87" height="26" rx="13"/>
+      <text class="cluTxt" x="333.5" y="511" text-anchor="middle" dominant-baseline="central">闭环与找人</text>
+      <rect class="chip" x="304" y="530" width="76" height="30" rx="8"/>
+      <text class="chipTxt" x="342" y="545" text-anchor="middle" dominant-baseline="central">主动识别</text>
+      <rect class="chip" x="304" y="566" width="76" height="30" rx="8"/>
+      <text class="chipTxt" x="342" y="581" text-anchor="middle" dominant-baseline="central">闭环设计</text>
+      <rect class="chip" x="304" y="602" width="76" height="30" rx="8"/>
+      <text class="chipTxt" x="342" y="617" text-anchor="middle" dominant-baseline="central">成效挂钩</text>
+    </g>
+
+    <!-- 游说（紫） -->
+    <g class="br-purple">
+      <rect class="panel" x="40" y="775" width="420" height="190" rx="10"/>
+      <rect class="hdr" x="56" y="791" width="120" height="30" rx="15"/>
+      <circle class="badge" cx="72" cy="806" r="11"/>
+      <text class="badgeTxt" x="72" y="806" text-anchor="middle" dominant-baseline="central">算</text>
+      <text class="hdrTxt" x="90" y="806" dominant-baseline="central">游说三段式</text>
+      <rect class="chip" x="64" y="835" width="89" height="30" rx="8"/>
+      <text class="chipTxt" x="108.5" y="850" text-anchor="middle" dominant-baseline="central">工会·饭碗</text>
+      <rect class="chip" x="64" y="873" width="89" height="30" rx="8"/>
+      <text class="chipTxt" x="108.5" y="888" text-anchor="middle" dominant-baseline="central">业界·责任</text>
+      <rect class="chip" x="64" y="911" width="89" height="30" rx="8"/>
+      <text class="chipTxt" x="108.5" y="926" text-anchor="middle" dominant-baseline="central">财政·成本</text>
+      <rect class="chip" x="204" y="835" width="89" height="30" rx="8"/>
+      <text class="chipTxt" x="248.5" y="850" text-anchor="middle" dominant-baseline="central">前线·追责</text>
+      <rect class="chip" x="204" y="873" width="89" height="30" rx="8"/>
+      <text class="chipTxt" x="248.5" y="888" text-anchor="middle" dominant-baseline="central">居民·补偿</text>
+    </g>
+
+    <!-- 英文 DP（蓝） -->
+    <g class="br-blue">
+      <rect class="panel" x="980" y="720" width="420" height="130" rx="10"/>
+      <rect class="hdr" x="996" y="736" width="95" height="30" rx="15"/>
+      <circle class="badge" cx="1012" cy="751" r="11"/>
+      <text class="badgeTxt" x="1012" y="751" text-anchor="middle" dominant-baseline="central">全</text>
+      <text class="hdrTxt" x="1030" y="751" dominant-baseline="central">英文 DP</text>
+      <rect class="chip" x="1045" y="780" width="80" height="30" rx="8"/>
+      <text class="chipTxt" x="1085" y="795" text-anchor="middle" dominant-baseline="central">骨架七段</text>
+      <rect class="chip" x="1145" y="780" width="90" height="30" rx="8"/>
+      <text class="chipTxt" x="1190" y="795" text-anchor="middle" dominant-baseline="central">恰好两问题</text>
+      <rect class="chip" x="1255" y="780" width="80" height="30" rx="8"/>
+      <text class="chipTxt" x="1295" y="795" text-anchor="middle" dominant-baseline="central">金句八句</text>
+    </g>
+
+    <!-- 驳论（红） -->
+    <g class="br-red">
+      <rect class="panel" x="500" y="812" width="440" height="184" rx="10"/>
+      <rect class="hdr" x="516" y="828" width="106" height="30" rx="15"/>
+      <circle class="badge" cx="532" cy="843" r="11"/>
+      <text class="badgeTxt" x="532" y="843" text-anchor="middle" dominant-baseline="central">防</text>
+      <text class="hdrTxt" x="550" y="843" dominant-baseline="central">驳论七刀</text>
+      <rect class="chip" x="547" y="872" width="89" height="30" rx="8"/>
+      <text class="chipTxt" x="591.5" y="887" text-anchor="middle" dominant-baseline="central">为现状定价</text>
+      <rect class="chip" x="656" y="872" width="115" height="30" rx="8"/>
+      <text class="chipTxt" x="713.5" y="887" text-anchor="middle" dominant-baseline="central">并非取舍是先后</text>
+      <rect class="chip" x="791" y="872" width="102" height="30" rx="8"/>
+      <text class="chipTxt" x="842" y="887" text-anchor="middle" dominant-baseline="central">风险源于设计</text>
+      <rect class="chip" x="560" y="910" width="102" height="30" rx="8"/>
+      <text class="chipTxt" x="611" y="925" text-anchor="middle" dominant-baseline="central">重新界定问题</text>
+      <rect class="chip" x="682" y="910" width="89" height="30" rx="8"/>
+      <text class="chipTxt" x="726.5" y="925" text-anchor="middle" dominant-baseline="central">借对方之力</text>
+      <rect class="chip" x="791" y="910" width="89" height="30" rx="8"/>
+      <text class="chipTxt" x="835.5" y="925" text-anchor="middle" dominant-baseline="central">用原文反杀</text>
+      <rect class="chip" x="675" y="948" width="90" height="30" rx="8"/>
+      <text class="chipTxt" x="720" y="963" text-anchor="middle" dominant-baseline="central">区分两种X</text>
+    </g>
+
+    <!-- 中心节点 -->
+    <rect class="hub" x="636" y="456" width="168" height="88" rx="16"/>
+    <text class="hubT1" x="720" y="480" text-anchor="middle" dominant-baseline="central">JRE 罐头论点</text>
+    <text class="hubT2" x="720" y="503" text-anchor="middle" dominant-baseline="central">拆 · 找 · 算 · 留 · 防</text>
+    <text class="hubT3" x="720" y="524" text-anchor="middle" dominant-baseline="central">16 议题 · 64 篇范文</text>
+  </svg>
+  <p class="note">用法：先背中心五字诀「拆·找·算·留·防」→ 看图 5 分钟 → 合上图，白纸重画六个主干（每支一种颜色）→ 对照补漏，补不出的就是下次复习重点。记忆钩子三层：字诀 → 颜色 → 罐头。</p>
+</div>
+
+<div class="hsec">
+  <h2><span class="no">⓪</span>五字总纲<span class="hint">全部罐头的上层聚类：先记 5 个字，再带出 30+ 条</span></h2>
+  <div class="tbl"><table>
+    <tr><th>字诀</th><th>含义</th><th>包含哪些罐头</th><th>对应</th></tr>
+    <tr><td>拆 · 拆概念</td><td>把题目关键词、假二分、表面指标拆开，重新定义问题和评估标准</td><td>破题三件套；假指标vs真指标；驳论的重新界定问题、区分两种X、用原文反杀</td><td>①＋②④部分（黄）</td></tr>
+    <tr><td>找 · 找错配</td><td>找供需、结构、时序、分布上的错位：问题极少是「不够」，多是「错配」</td><td>错配论、悬崖效应、责任断点、一次性vs经常性、一次性买家、局部成本分散效益</td><td>② 主干（橙）</td></tr>
+    <tr><td>算 · 算人心</td><td>算每个玩家的指标、诱因和恐惧：对方不合作是理性，游说是给好处</td><td>诱因分析、固定成本论、选择的前提、隐藏受害者、强制≠质量、不行动的代价；游说全部</td><td>②人心簇＋⑤（紫）</td></tr>
+    <tr><td>留 · 留余地</td><td>每个方案都附条件、分级、节奏和退路，从不把话说满</td><td>附条件表态；风险分级、防滥权三件套、试点先行、指标触发放逐、工具阶梯、闭环设计等全部措施罐头</td><td>①③（绿）</td></tr>
+    <tr><td>防 · 防反对</td><td>预先挑最强反方，部分同意后转化为自己的条件或设计原则</td><td>驳论七刀全部</td><td>④（红）</td></tr>
+  </table></div>
+  <div class="callout neutral">
+    <span class="t">记忆口诀</span>
+    「先拆概念，再找错配；细算人心，留住余地，防住反对。」——考场拿到任何题目，按这五个字走一遍，论点自然长出来：拆（破题）→找（诊断）→算（人心与游说）→留（措施）→防（驳论）。英文 discussion paper 就是这套动作压缩成的七段骨架（见⑥）。
+  </div>
+</div>
+
+<div class="hsec">
+  <h2><span class="no">①</span>破题三件套<span class="hint">64 篇范文无一例外</span></h2>
+  <div class="tbl"><table>
+    <tr><th>步骤</th><th>做法</th><th>句式 / 例子</th></tr>
+    <tr><td>1. 拆政策目的</td><td>先问「这政策为了什么」，常把关键词拆成两个可能目的</td><td>零废堆填≠减废；上流≠流转；小班≠小校；收生≠留港；津贴≠喘息；提速≠减参与</td></tr>
+    <tr><td>2. 立评估标准（尺）</td><td>由目的导出 2–3 把可检验的尺</td><td>下架题：速度·准确·可执行；生育题：尺是「令家庭却步的成本有否下降」</td></tr>
+    <tr><td>3. 附条件表态</td><td>有条件但不骑墙，条件正好对应那几把尺</td><td>「本文同意 X，但前提是……；若只……而欠缺……，则宁可暂缓」</td></tr>
+  </table></div>
+  <details class="box">
+    <summary>点开看：三件套实战一次（AI城市大脑题）</summary>
+    <div class="body"><div class="tbl"><table>
+      <tr><th>步骤</th><th>考场实战</th></tr>
+      <tr><td>拆目的</td><td>题目说「整合数据提升城市管理和应急能力」→ 把价值重新界定：不是「看得更多」，而是「决策更快」</td></tr>
+      <tr><td>立评估尺</td><td>导出两把尺：跨部门反应时间是否缩短（不是接入了多少数据）；市民是否相信数据只用于既定用途</td></tr>
+      <tr><td>附条件表态</td><td>「本文支持建设 AI 城市大脑，但条件是应急先行、规则先于扩展、用途有明确边界」</td></tr>
+    </table></div></div>
+  </details>
+</div>
+
+<div class="hsec">
+  <h2><span class="no">②</span>诊断罐头（问题端）<span class="hint">每题选 2–3 个，给标签、写机制</span></h2>
+  <div class="tbl"><table>
+    <tr><th>罐头</th><th>一句话论点</th><th>什么时候用</th></tr>
+    <tr><td>错配论</td><td>问题不是总量不足，而是形态／时间／地点／诱因错配；「错配多于总量」</td><td>任何「不足」「不够」类题目</td></tr>
+    <tr><td>不行动的代价</td><td>现状并非中性；不做亦有代价，承受者正是最弱势的人</td><td>反方主张维持现状／延後</td></tr>
+    <tr><td>假指标 vs 真指标</td><td>最容易数的数字不是目的：occupancy proves nothing</td><td>题目给出 KPI／人数／宗数时</td></tr>
+    <tr><td>一次性买家 vs 重复参与者</td><td>业余义务者面对职业玩家，资讯与专业严重不对称</td><td>招标、大维修、资助评审</td></tr>
+    <tr><td>悬崖效应</td><td>门槛式安排制造夹心层；死线前需求集中爆发</td><td>有门槛、上限、宽限期的政策</td></tr>
+    <tr><td>固定成本论</td><td>合规成本大致固定，必然压垮小企／小机构（大企因此支持）</td><td>新规管、申报、发牌、挂钩</td></tr>
+    <tr><td>诱因分析</td><td>对方不合作是理性：看他的指标和诱因，改指标而非责骂</td><td>持份者拖延、不配合、规避</td></tr>
+    <tr><td>责任断点</td><td>每段都有人管、全程没人拥有；「层与层之间没有楼梯」</td><td>跨部门、转介、分层、分工</td></tr>
+    <tr><td>选择的前提</td><td>券制／申请制／市场对最不懂争取的人天然失灵</td><td>市场化、服务券、自愿机制</td></tr>
+    <tr><td>隐藏受害者</td><td>主动找出材料没写的人：租户、照顾者、单身人士、不会求助者</td><td>implications 拉分位</td></tr>
+    <tr><td>一次性 vs 经常性</td><td>一次性补贴对应的是持续多年的成本；效果有限，原因在结构不在金额</td><td>现金奖励、津贴、豁免</td></tr>
+    <tr><td>局部成本、分散效益</td><td>Local costs, dispersed benefits → NIMBY 民调不矛盾</td><td>选址、基建、无人机、垃圾站</td></tr>
+    <tr><td>强制 ≠ 质量</td><td>Compulsion adds assessments, not candour</td><td>强制申报／评估／培训类题目</td></tr>
+  </table></div>
+  <details class="box">
+    <summary>点开看：每条诊断罐头详解（触发信号＋三步写法＋考场句式＋范文示例）<span class="cnt">13</span></summary>
+    <div class="body">
+      <div class="ci">
+        <h4><span class="tag t2">错配论</span><span class="q">问题不是总量不足，而是形态／时间／地点／诱因错配</span></h4>
+        <p class="row"><b>触发信号</b>：题目出现「不足、不够、短缺、轮候长、供不应求」——任何暗示「加供应」的题。</p>
+        <ol>
+          <li>先一句承认短缺表象存在（不否认现实，免得显得离地）；</li>
+          <li>把「缺」拆成形态、时间、地点、诱因四个维度，锁定真正对不上的那一维；</li>
+          <li>下结论：加总量治标、调结构治本，措施段回扣③的对应罐头。</li>
+        </ol>
+        <p class="row"><b>考场句式</b>：「症结不在总量，而在＿＿；在＿＿不变的情况下增加＿＿，只会＿＿。」</p>
+        <p class="row eg"><b>范文示例</b>：安老题——缺口是形态错配：长者要的是全日留宿照顾，本地资助服务按节提供，加名额也填不上。网约车题——叫车难集中在繁忙时段和偏远地区，是时间与地点错配，增发车牌帮不了繁忙时段。</p>
+      </div>
+      <div class="ci">
+        <h4><span class="tag t2">不行动的代价</span><span class="q">现状并非中性；不做亦有代价，承受者正是最弱势的人</span></h4>
+        <p class="row"><b>触发信号</b>：反方主张「维持现状／再等等／审慎起见不宜推行」。</p>
+        <ol>
+          <li>把「现状」从默认选项拉出来，变成同样需要论证的选项；</li>
+          <li>给现状定价：慢一年＝什么损失、谁承担（轮候恶化、意外、错失窗口）；</li>
+          <li>点出承受代价的正是最没话语权的人——这一句是拉分关键。</li>
+        </ol>
+        <p class="row"><b>考场句式</b>：「不行动的代价并非零：以＿＿为由维持现状，等同接受＿＿，承受后果的正是＿＿。」</p>
+        <p class="row eg"><b>范文示例</b>：AI城市大脑题——以私隐为由维持现状，等同接受较慢的应急反应，承受后果的正是受灾市民。医疗题——轮候是隐性收费：费用没有出现在帐目上，却写在病人恶化的病情里。</p>
+      </div>
+      <div class="ci">
+        <h4><span class="tag t2">假指标 vs 真指标</span><span class="q">最容易数的数字不是目的：occupancy proves nothing</span></h4>
+        <p class="row"><b>触发信号</b>：题目给出 KPI、人数、宗数、使用率、入住率、达标率。</p>
+        <ol>
+          <li>先推翻最表面的指标——它一定会「达标」，因为最容易达标；</li>
+          <li>回到政策目的，立真正对应的指标（通常更难量，才叫真指标）；</li>
+          <li>补一刀：假指标不只无用，还会诱导行为扭曲（Goodhart 定律）。</li>
+        </ol>
+        <p class="row"><b>考场句式</b>：「＿＿ proves nothing：在＿＿下，＿＿必然爆满／达标；真正要量度的是＿＿。」</p>
+        <p class="row eg"><b>范文示例</b>：院舍试点英文卷——「With a queue of 23 months, the new homes will certainly fill; occupancy proves nothing.」真指标＝最需要照顾的住户是否少等了，而不是床位有没有填满。</p>
+      </div>
+      <div class="ci">
+        <h4><span class="tag t2">一次性买家 vs 重复参与者</span><span class="q">业余义务者面对职业玩家，资讯与专业严重不对称</span></h4>
+        <p class="row"><b>触发信号</b>：招标、委聘顾问、大维修、资助评审、业主委员会——凡「业余买方 vs 职业卖方」的场景。</p>
+        <ol>
+          <li>点出双方身份：买方一辈子参与一两次（业主数十年修一次楼），卖方以此为业、年年参与；</li>
+          <li>写后果：规则由懂的人定——标书怎么写、评标怎么定，业余方连被坑都察觉不到；</li>
+          <li>对策接③「中央集中专业／公开换信任」：标准文件、独立专业支援、公开准则。</li>
+        </ol>
+        <p class="row"><b>考场句式</b>：「＿＿数十年才＿＿一次，＿＿却年年参与；谁控制＿＿，谁就控制整件事。」</p>
+        <p class="row eg"><b>范文示例</b>：大维修题——「大厦数十年才修一次，顾问承建商年年参与；谁控制标书和评标，谁就控制整项工程。」</p>
+      </div>
+      <div class="ci">
+        <h4><span class="tag t2">悬崖效应</span><span class="q">门槛式安排制造夹心层；死线前需求集中爆发</span></h4>
+        <p class="row"><b>触发信号</b>：政策有门槛、上限、豁免线、宽限期、死线。</p>
+        <ol>
+          <li>先找出门槛／死线在哪（收入线、年期、面积上限）；</li>
+          <li>写两种悬崖：刚过门槛的人全额承受（夹心层），或所有人挤到死线前一刻才行动；</li>
+          <li>对策：把悬崖改成斜坡——分档减免、分年度目标、过渡安排。</li>
+        </ol>
+        <p class="row"><b>考场句式</b>：「刚越过＿＿的＿＿须全额＿＿，最可能因＿＿却步；应增设＿＿一级／分年＿＿。」</p>
+        <p class="row eg"><b>范文示例</b>：医疗收费题——收入刚过门槛的夹心层全额付费，最可能因价却步→增设半免一级。劏房题——业主倾向拖到 2030 年宽限期满才申请→分年度认证目标，把悬崖拆成斜坡。</p>
+      </div>
+      <div class="ci">
+        <h4><span class="tag t2">固定成本论</span><span class="q">合规成本大致固定，必然压垮小企／小机构（大企因此支持）</span></h4>
+        <p class="row"><b>触发信号</b>：新表格、申报、发牌、规管、挂钩要求出台。</p>
+        <ol>
+          <li>指出合规成本不随规模缩小：填一张表、装一套系统、聘一个人手，大企小企一样贵；</li>
+          <li>推论：小机构负担占比最重，甚至被迫退出→市场更集中、选择更少；</li>
+          <li>留意反常信号：大企欢迎新规管，正因为它抬高了入场门槛——这是拉分细节。</li>
+        </ol>
+        <p class="row"><b>考场句式</b>：「＿＿的成本大致固定，落在小＿＿身上最重——这正解释了为什么＿＿表示欢迎。」</p>
+        <p class="row eg"><b>范文示例</b>：AI申报题——「填表成本大致固定，落在小企身上最重——这正解释了为什么两家国际大承建商表示欢迎。」对策回扣③「降程序负担不降标准」。</p>
+      </div>
+      <div class="ci">
+        <h4><span class="tag t2">诱因分析</span><span class="q">对方不合作是理性：看他的指标和诱因，改指标而非责骂</span></h4>
+        <p class="row"><b>触发信号</b>：持份者拖延、不配合、规避、阳奉阴违。</p>
+        <ol>
+          <li>不骂懒或坏，先问：「他被怎样考核？照做对他有什么好处？」；</li>
+          <li>写机制：现行指标正在奖励错误行为（达标＝收入减少，谁愿达标？）；</li>
+          <li>对策是改指标／改付费方式，而不是加强呼吁或责骂。</li>
+        </ol>
+        <p class="row"><b>考场句式</b>：「＿＿的拖延是理性的：＿＿意味着＿＿。要改的不是态度，是＿＿。」</p>
+        <p class="row eg"><b>范文示例</b>：劏房英文卷——Owner delay is rational（达标＝可租房间减少）→早鸟奖励改诱因。孵化机构题——targets reward admissions（指标奖励录取数目）→改为 reward survival and local hiring（奖励存活率与本地招聘）。</p>
+      </div>
+      <div class="ci">
+        <h4><span class="tag t2">责任断点</span><span class="q">每段都有人管、全程没人拥有；「层与层之间没有楼梯」</span></h4>
+        <p class="row"><b>触发信号</b>：跨部门协作、转介机制、分层架构、分工流程。</p>
+        <ol>
+          <li>画出流程链，指出接口处没人拥有整个个案；</li>
+          <li>写后果：个案在层与层之间被上推、打转——每段都「完成」了，问题却原封不动；</li>
+          <li>对策接③「闭环设计」：指定个案拥有者＋回转保证。</li>
+        </ol>
+        <p class="row"><b>考场句式</b>：「症结不在缺少＿＿，而在＿＿之间没有楼梯：每段都有人管，全程没人拥有。」</p>
+        <p class="row eg"><b>范文示例</b>：精神健康题——「症结不在缺少层，而在层与层之间没有楼梯：前线无标准、无后援，只能把个案往上推。」1823／部门分工题——「同一问题在系统中多次『完成』，在街上却原封不动。」</p>
+      </div>
+      <div class="ci">
+        <h4><span class="tag t2">选择的前提</span><span class="q">券制／申请制／市场对最不懂争取的人天然失灵</span></h4>
+        <p class="row"><b>触发信号</b>：服务券、申请制、自愿机制、市场化、配对平台。</p>
+        <ol>
+          <li>先承认「选择」在纸面上成立（券发了、平台有了）；</li>
+          <li>指出选择能力分布不均：资讯、认知、语言、家人支援，样样都是前提；</li>
+          <li>结论：最需要的人往往最不会选→对策接③「主动识别／个案经理」。</li>
+        </ol>
+        <p class="row"><b>考场句式</b>：「所谓选择只是纸上的选择：最难＿＿的，正是最需要的＿＿。」</p>
+        <p class="row eg"><b>范文示例</b>：长者券题——认知障碍、独居长者最难用券→设独立个案经理代为选择。照顾者题——「有钱也买不到替手，所谓选择只是纸上的选择。」</p>
+      </div>
+      <div class="ci">
+        <h4><span class="tag t2">隐藏受害者</span><span class="q">主动找出材料没写的人：租户、照顾者、单身人士、不会求助者</span></h4>
+        <p class="row"><b>触发信号</b>：主分析写完，implications 要拉分位时——永远多问一句「材料没提到谁？」</p>
+        <ol>
+          <li>列出材料的盲区：租户／照顾者／单身人士／少数族裔／不会求助者；</li>
+          <li>写他如何被同一政策波及（被迫迁、负担加重、被排除在外）；</li>
+          <li>点出他不在保障之内、没有话语权——implications 立刻深一层。</li>
+        </ol>
+        <p class="row"><b>考场句式</b>：「＿＿的＿＿同样＿＿，却不在＿＿之内——a group with little public voice。」</p>
+        <p class="row eg"><b>范文示例</b>：旧区重建题——楼换楼只针对业主，租户被迫迁出的速度同样加快，却不在保障之内。劏房英文卷——单身住户 a group with little public voice。</p>
+      </div>
+      <div class="ci">
+        <h4><span class="tag t2">一次性 vs 经常性</span><span class="q">一次性补贴对应的是持续多年的成本；效果有限，原因在结构不在金额</span></h4>
+        <p class="row"><b>触发信号</b>：现金奖励、一次性津贴、豁免、消费券。</p>
+        <ol>
+          <li>把金额放一边，先问：这笔钱对应的是多长的成本期？</li>
+          <li>指出结构性原因（住屋、托儿、职业中断）不会随一笔钱改变；</li>
+          <li>结论：不是金额问题是结构问题→措施段接经常性／结构性安排。</li>
+        </ol>
+        <p class="row"><b>考场句式</b>：「一次性的＿＿，对应的是持续多年的＿＿；效果有限，原因在结构而不在金额。」</p>
+        <p class="row eg"><b>范文示例</b>：生育题——「一次性的奖励金，对应的是持续多年的成本；现金效果有限，原因在结构而不在金额。」</p>
+      </div>
+      <div class="ci">
+        <h4><span class="tag t2">局部成本、分散效益</span><span class="q">Local costs, dispersed benefits → NIMBY 民调不矛盾</span></h4>
+        <p class="row"><b>触发信号</b>：选址、基建、垃圾站、无人机航道——「支持，但别在我家」。</p>
+        <ol>
+          <li>点出成本与效益的分布不对称：成本集中在附近居民，效益分散全城市民；</li>
+          <li>因此「整体支持、当地反对」并不矛盾，不是市民虚伪——这一句先卸掉反方道德指控；</li>
+          <li>对策：补偿当地、程序公平、把公益做成可见（如医院航线）。</li>
+        </ol>
+        <p class="row"><b>考场句式</b>：「Local costs, dispersed benefits：＿＿支持＿＿，只是不在＿＿。」</p>
+        <p class="row eg"><b>范文示例</b>：无人机题——Residents welcome drone delivery in general but not over their own homes→指定航道＋把医院航线做成可见公益。</p>
+      </div>
+      <div class="ci">
+        <h4><span class="tag t2">强制 ≠ 质量</span><span class="q">Compulsion adds assessments, not candour</span></h4>
+        <p class="row"><b>触发信号</b>：强制申报、强制评估、强制培训、强制披露。</p>
+        <ol>
+          <li>区分「数量」与「质量」：强制只能堆高数量；</li>
+          <li>写机制：被迫填的表格趋于例行公事（box-ticking），有表格、没坦白；</li>
+          <li>对策：先让填写对填写者有价值（反馈、跟进、精简），再谈是否强制。</li>
+        </ol>
+        <p class="row"><b>考场句式</b>：「强制只会增加＿＿的数量，不会增加它的＿＿——Compulsion adds assessments, not candour.」</p>
+        <p class="row eg"><b>范文示例</b>：工作压力评估英文卷——「Compulsion would increase the number of assessments, not their candour or usefulness.」</p>
+      </div>
+    </div>
+  </details>
+</div>
+
+<div class="hsec">
+  <h2><span class="no">③</span>措施罐头（方案端）<span class="hint">每条标明回扣哪个诊断，挑战段敢批评自己</span></h2>
+  <div class="tbl"><table>
+    <tr><th>罐头</th><th>做法</th><th>回应哪个诊断</th></tr>
+    <tr><td>风险分级</td><td>高风险严管＋独立测试，低风险从简自批；义务按规模分配</td><td>一刀切、固定成本</td></tr>
+    <tr><td>防滥权三件套</td><td>定义收窄＋程序写清＋独立复核；扩大须经立法会</td><td>扩权误伤的忧虑</td></tr>
+    <tr><td>指标＋触发＋退场</td><td>达标即扩、未达标即收；三年检讨；挤塞闸门</td><td>任何建议的收尾</td></tr>
+    <tr><td>试点先行</td><td>先把模式做对，按数据分批；先做后改成本特别高（不可逆性）</td><td>推广／扩展类题目</td></tr>
+    <tr><td>中央集中专业</td><td>小型核证小组集中稀缺专家；accredit rather than employ</td><td>专业人手不足</td></tr>
+    <tr><td>主动识别</td><td>跨部门数据核对，主动找出不求助的人</td><td>申请制漏掉最需要的人</td></tr>
+    <tr><td>闭环设计</td><td>上游把关＋下游承接＋回转保证；no closure without destination</td><td>分流、转介、取缔</td></tr>
+    <tr><td>工具阶梯</td><td>资讯 → 诱因 → 规管，由轻到重；收费／最重工具放最后</td><td>规管类题目</td></tr>
+    <tr><td>成效挂钩</td><td>补贴与留任挂钩、按成效付费、里程碑分期</td><td>deadweight、期满即止</td></tr>
+    <tr><td>降程序负担不降标准</td><td>合办、范本、免费工具、数码平台</td><td>中小企／小机构负担</td></tr>
+    <tr><td>公开换信任</td><td>登记册、每年公布数据、公开准则与计算方法</td><td>公信力、黑箱质疑</td></tr>
+    <tr><td>补位而非取代</td><td>自然流失处理人手；先补最缺环节；在职者优先转型</td><td>饭碗恐惧</td></tr>
+  </table></div>
+  <details class="box">
+    <summary>点开看：每条措施罐头详解（回扣哪个诊断＋三步写法＋考场句式＋范文示例）<span class="cnt">12</span></summary>
+    <div class="body">
+      <div class="ci">
+        <h4><span class="tag t3">风险分级</span><span class="q">高风险严管＋独立测试，低风险从简自批；义务按规模分配</span></h4>
+        <p class="row"><b>回扣诊断</b>：一刀切、固定成本论。</p>
+        <ol>
+          <li>按风险分两到三级：看影响谁（资格／执法／弱势用户＝高）、可逆与否；</li>
+          <li>高风险严管（上线前独立测试、强制申报），低风险从简（自我申报、事后抽查）；</li>
+          <li>补一句义务随规模分配：中小机构不被固定合规成本压垮——顺手回扣诊断。</li>
+        </ol>
+        <p class="row"><b>考场句式</b>：「凡涉及＿＿者列为高风险，须＿＿；纯＿＿类只需＿＿。」</p>
+        <p class="row eg"><b>范文示例</b>：AI采购题——「影响资格、执法或弱势用户＝高风险，上线前独立测试；纯资讯类只需自我申报。」诈骗下架题——大平台主动侦测，中小平台只按指令行事。</p>
+      </div>
+      <div class="ci">
+        <h4><span class="tag t3">防滥权三件套</span><span class="q">定义收窄＋程序写清＋独立复核；扩大须经立法会</span></h4>
+        <p class="row"><b>回扣诊断</b>：扩权误伤的忧虑（任何「给政府／部门新权力」的建议都该补这三句）。</p>
+        <ol>
+          <li>定义收窄：附表列明受规管范围，不写开放式授权；</li>
+          <li>程序写清：书面理由、时限、通知，一样不能少；</li>
+          <li>独立复核＋扩大须经立法会：给反对者一个「安全带」，建议反而更容易过。</li>
+        </ol>
+        <p class="row"><b>考场句式</b>：「权力附三项限制：定义收窄、程序写清、独立复核；扩大适用范围须经立法会。」</p>
+        <p class="row eg"><b>范文示例</b>：诈骗下架题——「附表列明受规管内容，扩大须经立法会；指令附书面理由，每道指令都可独立复核。」</p>
+      </div>
+      <div class="ci">
+        <h4><span class="tag t3">指标＋触发＋退场</span><span class="q">达标即扩、未达标即收；三年检讨；挤塞闸门</span></h4>
+        <p class="row"><b>回扣诊断</b>：任何建议的收尾——写完措施不知道写什么时，就用它收尾。</p>
+        <ol>
+          <li>必答三问：用什么指标量？达标怎么办？未达标怎么办？</li>
+          <li>写明触发机制：达标即扩、未达标即收（挤塞闸门：跌破某水平即暂停）；</li>
+          <li>把检讨写死时间（三年检讨），显示不是永久承诺，反对者更易接受。</li>
+        </ol>
+        <p class="row"><b>考场句式</b>：「以＿＿指标决定：达标则＿＿，未达标则＿＿；＿＿年后全面检讨。」</p>
+        <p class="row eg"><b>范文示例</b>：AI城市大脑题——「以跨部门资讯传递时间等指标决定是否进入下一阶段，未达指标者暂缓扩展。」网约车题——繁忙路段车速跌破某水平即暂停增发车牌（挤塞闸门）。</p>
+      </div>
+      <div class="ci">
+        <h4><span class="tag t3">试点先行</span><span class="q">先把模式做对，按数据分批；先做后改成本特别高（不可逆性）</span></h4>
+        <p class="row"><b>回扣诊断</b>：推广／扩展类题目——「要不要全港推行？」的标准答案。</p>
+        <ol>
+          <li>主张「先把模式做对，按数据分批」而不是一次推全港；</li>
+          <li>理由写不可逆性：一旦签约、一旦养成习惯，改动成本极高——这是说理核心；</li>
+          <li>分批维度写具体：先对象后地区／先单场景后扩展，别只写「先做试点」四个字。</li>
+        </ol>
+        <p class="row"><b>考场句式</b>：「先做对，再做开：先＿＿、后＿＿；＿＿一旦＿＿，改动牵涉＿＿，难以逆转。」</p>
+        <p class="row eg"><b>范文示例</b>：社区药房题——「先扩对象、后扩地区；药房一旦签约、病人一旦习惯，改动牵涉合约和信任，难以逆转。」</p>
+      </div>
+      <div class="ci">
+        <h4><span class="tag t3">中央集中专业</span><span class="q">小型核证小组集中稀缺专家；accredit rather than employ</span></h4>
+        <p class="row"><b>回扣诊断</b>：专业人手不足、一次性买家（业余方缺专业支援）。</p>
+        <ol>
+          <li>先承认专业稀缺，每个部门各聘一份只会摊薄；</li>
+          <li>集中成小型中央小组／共享平台，一次建立、处处调用；</li>
+          <li>金句收尾：accredit rather than employ——政府由生产者（producer）变监管者（regulator）。</li>
+        </ol>
+        <p class="row"><b>考场句式</b>：「与其每个＿＿各聘＿＿，不如设小型中央＿＿——expertise is pooled rather than spread thinly。」</p>
+        <p class="row eg"><b>范文示例</b>：AI采购题——「小型中央核证小组审查高风险申报——expertise is pooled rather than spread thinly。」大维修题——Accredit rather than employ，部门由 producer 变 regulator。</p>
+      </div>
+      <div class="ci">
+        <h4><span class="tag t3">主动识别</span><span class="q">跨部门数据核对，主动找出不求助的人</span></h4>
+        <p class="row"><b>回扣诊断</b>：申请制漏掉最需要的人、选择的前提。</p>
+        <ol>
+          <li>先点出申请制的盲区：最需要的人往往最不会、最不敢申请；</li>
+          <li>用政府现有数据跨部门核对（社署、医管局、税局），主动找出他们；</li>
+          <li>进阶写法：把「申请」变「顺带筛查」——评估 A 时同时为 B 做筛查，零额外门槛。</li>
+        </ol>
+        <p class="row"><b>考场句式</b>：「与其等＿＿申请，不如＿＿：与＿＿核对资料，主动识别＿＿。」</p>
+        <p class="row eg"><b>范文示例</b>：医疗减免题——「与社署核对资料，主动识别合资格者。」照顾者题——「被照顾者接受评估时，同时为照顾者做压力筛查。」</p>
+      </div>
+      <div class="ci">
+        <h4><span class="tag t3">闭环设计</span><span class="q">上游把关＋下游承接＋回转保证；no closure without destination</span></h4>
+        <p class="row"><b>回扣诊断</b>：责任断点；分流、转介、取缔类题目必用。</p>
+        <ol>
+          <li>上游把关：入门准则先定好，不是什么个案都放进来；</li>
+          <li>下游承接：分流出去有地方去、腾出的名额有指定用途；</li>
+          <li>回转保证：不合适就回流——「没有安置方案，就不发迁出指示」。</li>
+        </ol>
+        <p class="row"><b>考场句式</b>：「没有＿＿，就不＿＿：上游＿＿、下游＿＿，并保证＿＿可回流。」</p>
+        <p class="row eg"><b>范文示例</b>：专科分流题——「共同照顾协议＋快速回流承诺＋腾出名额锁定给新症。」劏房题——No closure without a destination：没有安置方案，不发迁出指示。</p>
+      </div>
+      <div class="ci">
+        <h4><span class="tag t3">工具阶梯</span><span class="q">资讯 → 诱因 → 规管，由轻到重；收费／最重工具放最后</span></h4>
+        <p class="row"><b>回扣诊断</b>：规管类题目——「该不该立例／收费？」的拆题框架。</p>
+        <ol>
+          <li>把手段由轻到重排序：资讯宣传 → 经济诱因 → 硬性规管；</li>
+          <li>最重工具（收费、罚则）放最后，并附检讨点「何时再议」；</li>
+          <li>说明为什么现在还不到最重一级——显示你考虑过比例原则，不是手软。</li>
+        </ol>
+        <p class="row"><b>考场句式</b>：「先＿＿，再＿＿，最后才是＿＿；＿＿留待＿＿后再议。」</p>
+        <p class="row eg"><b>范文示例</b>：郊野公园题——「分流先于限流：实时人流资讯→准则化限流→免费实名预约→收费留待日后。」垃圾收费题——生产者责任、回赠在先，按量收费待回收网络完备后再议。</p>
+      </div>
+      <div class="ci">
+        <h4><span class="tag t3">成效挂钩</span><span class="q">补贴与留任挂钩、按成效付费、里程碑分期</span></h4>
+        <p class="row"><b>回扣诊断</b>：deadweight（不补贴也会发生）、期满即止、假指标。</p>
+        <ol>
+          <li>钱照给、总额不变，但改发放节奏——先降低反对阻力；</li>
+          <li>与留任／成效／里程碑挂钩，而不是与「入职／开展」挂钩：rewards retention, not entry；</li>
+          <li>写明未达标即暂停，给财政当局一个实质监察权（顺手接⑤游说）。</li>
+        </ol>
+        <p class="row"><b>考场句式</b>：「＿＿总额不变，但＿＿：首＿＿按＿＿发，其余＿＿才发——rewards retention, not entry。」</p>
+        <p class="row eg"><b>范文示例</b>：青年职位题——「补贴总额不变，首四个月按月发，其余两个月留任满一年才发。」再就业津贴题——减首期、增设第十二个月第四期。</p>
+      </div>
+      <div class="ci">
+        <h4><span class="tag t3">降程序负担不降标准</span><span class="q">合办、范本、免费工具、数码平台</span></h4>
+        <p class="row"><b>回扣诊断</b>：固定成本论、中小企／小机构负担。</p>
+        <ol>
+          <li>先区分「标准」与「程序」：让步的是程序，标准一寸不降——这句话必须先写；</li>
+          <li>给具体工具：同区合办、标准范本、免费测试工具、数码平台；</li>
+          <li>点题句收尾：降低程序负担，而非降低标准。</li>
+        </ol>
+        <p class="row"><b>考场句式</b>：「降低的是程序负担，不是标准：＿＿合办＿＿、提供＿＿范本与免费＿＿。」</p>
+        <p class="row eg"><b>范文示例</b>：输入劳工题——「同区食肆合办招聘会、标准纪录范本——降低程序负担，而非降低标准。」AI申报题——缩短表格附范例＋免费测试工具。</p>
+      </div>
+      <div class="ci">
+        <h4><span class="tag t3">公开换信任</span><span class="q">登记册、每年公布数据、公开准则与计算方法</span></h4>
+        <p class="row"><b>回扣诊断</b>：公信力、黑箱质疑。</p>
+        <ol>
+          <li>先预见质疑：「黑箱作业、自己人查自己人」；</li>
+          <li>主动给三样：登记册、每年公布数据、公开准则与计算方法；</li>
+          <li>把公开写成制度（每年、定期），不是一次性交代——制度化的公开才换得到信任。</li>
+        </ol>
+        <p class="row"><b>考场句式</b>：「设＿＿登记册，每年公布＿＿与＿＿；准则与计算方法一并公开。」</p>
+        <p class="row eg"><b>范文示例</b>：公务AI题——「设AI应用登记册，每年公布错误率和覆核推翻率。」度身订造税务优惠题——「每年向立法会披露总数，三年后独立评估。」</p>
+      </div>
+      <div class="ci">
+        <h4><span class="tag t3">补位而非取代</span><span class="q">自然流失处理人手；先补最缺环节；在职者优先转型</span></h4>
+        <p class="row"><b>回扣诊断</b>：饭碗恐惧（⑤游说劳工界时的核心配套）。</p>
+        <ol>
+          <li>承诺以自然流失处理人手、不裁员——先拆掉最大的反对引信；</li>
+          <li>新技术／输入人手先补最缺环节（最难招聘的路线、最没人愿做的岗位）；</li>
+          <li>在职者优先转型，把他们的经验重新定义为新岗位的资产——人从「被取代者」变「受益者」。</li>
+        </ol>
+        <p class="row"><b>考场句式</b>：「＿＿优先用于＿＿；以自然流失处理人手，现职者优先＿＿——＿＿的经验正是＿＿。」</p>
+        <p class="row eg"><b>范文示例</b>：自动驾驶题——「优先用于最难招聘司机的路线；资助司机转型安全员、遥距操作员。」外籍照顾员题——本地人转往督导、社区和院舍专业岗。</p>
+      </div>
+    </div>
+  </details>
+</div>
+
+<div class="hsec">
+  <h2><span class="no">④</span>驳论七刀<span class="hint">公式：挑最强反方 → 部分同意 → 转化为条件／设计／次序</span></h2>
+  <div class="tbl"><table>
+    <tr><th>刀</th><th>句式</th><th>范文原型</th></tr>
+    <tr><td>1. 为现状定价</td><td>「不行动亦有代价，承受者正是……」</td><td>不整合＝接受较慢应急；轮候是隐性收费</td></tr>
+    <tr><td>2. 并非取舍，而是先后</td><td>「两者并非取舍，而是先后」</td><td>增聘医生 vs 分流（医生比 2.25→2.43 需五年）</td></tr>
+    <tr><td>3. 风险源于设计</td><td>「忧虑指向设计方式，而非放弃」</td><td>集中风险 → 联而不集；票房偏向 → 如何挂钩</td></tr>
+    <tr><td>4. 重新界定问题</td><td>「问题不在 X，而在 Y」</td><td>不在券还是名额，而在谁替长者选择</td></tr>
+    <tr><td>5. 借对方之力</td><td>承认对方前提，扭转其结论</td><td>劳动人口递减 → 分级要可升可降</td></tr>
+    <tr><td>6. 用原文反杀</td><td>拿题目／政府自己的文件约束对方</td><td>发证者是港协不是政府；优惠须修例</td></tr>
+    <tr><td>7. 区分两种 X</td><td>两种时间／零和 vs 非零和／能否解释 vs 简单与否</td><td>内部轮候时间可压、公众参与时间须留</td></tr>
+  </table></div>
+  <div class="callout neutral">
+    <span class="t">外地经验固定句式</span>
+    「可借鉴 X，不可照搬 Y，因为制度原因 Z。」——新加坡体育城（合约指标可借鉴、规模不照搬）、富士山（收费用途可借鉴、服务对象不同不照搬）、内地城市大脑（单场景切入可借鉴、普通法私隐框架不照搬）。
+  </div>
+  <details class="box">
+    <summary>点开看：每一刀什么时候出（含完整示例句）<span class="cnt">7</span></summary>
+    <div class="body"><div class="tbl"><table>
+      <tr><th>刀</th><th>什么时候出</th><th>完整示例句</th></tr>
+      <tr><td>为现状定价</td><td>反方说「维持现状／再等等／不如不做」</td><td>「不整合的代价并非零：以私隐为由维持现状，等同接受较慢的应急反应，承受后果的正是受灾市民。」（AI城市大脑）</td></tr>
+      <tr><td>并非取舍，而是先后</td><td>反方提出一个看似二选一的替代方案</td><td>「增聘医生与分流并非取舍，而是先后：医生比由 2.25 升至 2.43 需时五年，新医学院 2028 年才收生。」（专科轮候）</td></tr>
+      <tr><td>风险源于设计</td><td>反方攻击工具的副作用（挂钩会票房化、集中会单点失效）</td><td>「城市大脑不应是存放所有原始数据的中央资料库——但这指向设计方式，而非放弃建设：数据留在原部门，按授权调用。」（联而不集）</td></tr>
+      <tr><td>重新界定问题</td><td>双方在错误的问题上纠缠</td><td>「问题不在券还是名额，而在谁替长者选择、券值是否反映难度。」（长者券）</td></tr>
+      <tr><td>借对方之力</td><td>对方的前提其实支持你的结论</td><td>「劳动人口递减是结构性事实——它支持的结论应是『分级要有准则、可升可降』，而非『不应分级』。」（输入劳工）</td></tr>
+      <tr><td>用原文反杀</td><td>题目材料或官方文件里有能用的细节</td><td>「发证者是港协暨奥委会，不是政府——评核留在体育界内部。」（体育总会）；「五年规划已订明须在保障私隐前提下推展，城市大脑理应适用同一准则。」（AI城市大脑）</td></tr>
+      <tr><td>区分两种X</td><td>对方把两件事混为一谈</td><td>「时间本身就是保障一说，混淆了两种时间：政府内部轮候的时间应该压缩，公众参与的时间必须保留。」（北都专属法例）</td></tr>
+    </table></div></div>
+  </details>
+</div>
+
+<div class="hsec">
+  <h2><span class="no">⑤</span>游说三段式<span class="hint">对方真正怕的三件事 → 逐一回应 → 把成本包装成对方利益 → 给可核实的让步</span></h2>
+  <div class="tbl"><table>
+    <tr><th>对象</th><th>真正怕什么</th><th>给什么</th></tr>
+    <tr><td>劳工界／工会</td><td>饭碗、议价能力、先例</td><td>自然流失不裁员；人作最终决定保专业地位；职方参与评审；受压即冻结</td></tr>
+    <tr><td>业界／平台／雇主</td><td>责任不清、成本不可预期、被区别针对</td><td>安全港免责；分级＋过渡期；所有对手同一套规则；参与订守则</td></tr>
+    <tr><td>财政当局／立法会</td><td>经常开支失控、向选民交代</td><td>把新开支重新定性为「成本控制」；里程碑分期；未达标即暂停的实质监察权</td></tr>
+    <tr><td>前线专业人员</td><td>工作量、出错被追究、专业被降级</td><td>按程序者不追究；预警量与人手挂钩；把关权留给专业</td></tr>
+    <tr><td>居民／受影响者</td><td>补偿不公、被迫搬迁、意见无人听</td><td>「不确定本身就是代价」；补偿先行；快而公平胜过慢而不确定</td></tr>
+  </table></div>
+  <p class="note">收口金句：「现在参与设计有限度的方案，胜过事后面对更严厉的要求。」让步常备：首周期只奖不罚、试行一年公布数据、随时可退出、数据公开。</p>
+  <details class="box">
+    <summary>点开看：五类对象的范文实战示例<span class="cnt">5</span></summary>
+    <div class="body"><div class="tbl"><table>
+      <tr><th>对象</th><th>范文实战</th></tr>
+      <tr><td>劳工界／工会</td><td>自动驾驶题：「补位为先＋以自然流失处理人手；遥距操作正是资深司机经验的延伸，现职者优先受训；职工代表参与安全指标检讨——由旁观者变监察者。」外籍照顾员题：配额与公开数据挂钩，受压即冻结检讨。</td></tr>
+      <tr><td>业界／平台／雇主</td><td>诈骗下架题：「遵从指令并履行分级义务即可免责——安全港是自愿机制下得不到的；法例不设一般性事前审查；现在参与设计守则，胜过事后面对更严要求。」</td></tr>
+      <tr><td>财政当局／立法会</td><td>照顾者喘息题：「及时替手，是延后入住院舍和照顾者病倒两项成本最直接的方法——财政当局支持的不是一项新福利，而是一项可量度的成本控制措施。」创科拨款题：按里程碑分期，未达标即暂停，议员握有实质监察权。</td></tr>
+      <tr><td>前线专业人员</td><td>三层应急机制题（游说教师）：「专项拨款＋课节调整；职责界线只限识别与转介，而非判断与治疗；按程序覆核者不因系统缺陷被个人追究。」</td></tr>
+      <tr><td>居民／受影响者</td><td>北都收地题：「漫长程序并非纯粹保障——多年悬而未决令人不敢修葺投资，不确定本身就是代价；一个快而公平的程序，胜过一个慢而不确定的程序。」</td></tr>
+    </table></div></div>
+  </details>
+</div>
+
+<div class="hsec">
+  <h2><span class="no">⑥</span>英文 Discussion Paper 骨架<span class="hint">16 篇英文卷完全一致</span></h2>
+  <p>PURPOSE → BACKGROUND（重设问题 <code>not whether X, but whether Y</code> ＋定目的＋立两把检验尺） → PROBLEM 1 ＋ Implications → PROBLEM 2 ＋ Implications → RECOMMENDATIONS（每项标明 <code>Addressing Problem 1/2</code>） → IMPLEMENTATION AND MONITORING（敢提 defer／分阶段＋指标） → ADVICE SOUGHT</p>
+  <p class="note">规则：恰好两个问题；每个 implications 写到第二三层（moral hazard、先例效应、公信力、evaded rather than met）；问题写机制不骂人；建议附一句 why feasible；监测指标里放一个反直觉项（零负面发现＝核实失效的警号）。</p>
+  <div class="callout neutral">
+    <span class="t">必背金句</span>
+    <code>A declaration is a promise, not proof.</code> ｜ <code>Occupancy proves nothing.</code> ｜ <code>Compulsion adds assessments, not candour.</code> ｜ <code>Local costs, dispersed benefits.</code> ｜ <code>Rewards entry, not retention.</code> ｜ <code>Evaded rather than met.</code> ｜ <code>Adjust batches, not the deadline.</code> ｜ <code>A slower trial that keeps public trust is preferable to a faster one that ends in suspension.</code>
+  </div>
+  <details class="box">
+    <summary>点开看：骨架实战对照（AI采购申报题逐段映射）</summary>
+    <div class="body"><div class="tbl"><table>
+      <tr><th>骨架段落</th><th>AI 采购申报题怎么填</th></tr>
+      <tr><td>PURPOSE</td><td>一句话照抄题目任务：本文件阐述推广申报要求的两个主要问题及其影响，并提出应对措施</td></tr>
+      <tr><td>BACKGROUND</td><td>重设问题：The question is not whether to extend, but whether to extend in its present form. ＋立尺：A declaration is a promise, not proof（被核实、持续有效、失实有后果）</td></tr>
+      <tr><td>PROBLEM 1 ＋ Implications</td><td>申报既无人核实也不随系统更新；影响写到第二层：部门拿着申报放松审查（moral hazard）、出事后信心打击更大、合约上没有补救</td></tr>
+      <tr><td>PROBLEM 2 ＋ Implications</td><td>合规成本大致固定、压垮小企；影响写到第二层：竞争减弱与锁定、打击本地产业、部门改写服务描述令管制 evaded rather than met</td></tr>
+      <tr><td>RECOMMENDATIONS</td><td>每项标明 Addressing Problem 1/2：风险分级＋可验证且持续有效的申报＋中央核证小组→P1；简化表格＋免费测试工具→P2</td></tr>
+      <tr><td>IMPLEMENTATION</td><td>敢提 defer：押后六个月，先在试点部门测试；指标盯两个问题，末句反直觉：零负面发现应视为核实失效的警号</td></tr>
+      <tr><td>ADVICE SOUGHT</td><td>Members are invited to comment on the problems identified in paragraphs 4 to 7 and the recommendations in paragraphs 8 to 13. ＋部门署名</td></tr>
+    </table></div></div>
+  </details>
+</div>
+
+<div class="hsec">
+  <h2><span class="no">⑦</span>16 议题一句话罐头速查<span class="hint">考前 10 分钟扫读</span></h2>
+  <div class="tbl"><table>
+    <tr><th>议题</th><th>必带罐头</th></tr>
+    <tr><td>01 安老</td><td>形态错配；选择的前提是有能力选择；跨境只做自愿选项；frail residents cannot leave</td></tr>
+    <tr><td>02 医疗</td><td>轮候是隐性收费；推力要配拉力（先承接后引导）；悬崖效应加半免一级；先把模式做对再分批</td></tr>
+    <tr><td>03 精神健康</td><td>层与层之间没有楼梯；防卫性转介；现状才是降级；识别之后要有人接手</td></tr>
+    <tr><td>04 劳工</td><td>风险源于商业设计；deadweight／替代效应／期满即止；rewards entry, not retention；真实短缺 vs 待遇问题</td></tr>
+    <tr><td>05 人口</td><td>一次性 vs 经常性成本；指标≠目的（收生≠留港）；门槛决定谁被排除</td></tr>
+    <tr><td>06 福利</td><td>平台只能找人不能帮人；纸上的选择；新开支重新定性为成本控制；最容易数的数字</td></tr>
+    <tr><td>07 房屋</td><td>No closure without destination；adjust batches, not the deadline；上流≠流转；隐藏成本不上帐目</td></tr>
+    <tr><td>08 创科</td><td>缺的不是工厂是中游；补位非抢位；首个试用者非保证买家；管治代替初衷</td></tr>
+    <tr><td>09 旅游</td><td>分流先于限流；名额早已被分配；扣除替代效应；集中而非关闭</td></tr>
+    <tr><td>10 交通</td><td>错配多于总量；数据在受规管者手上；外部成本论；商业化≠省人手</td></tr>
+    <tr><td>11 环境</td><td>设施只能追赶废物；价格讯号的前提是可追溯；目标可信度本身是工具；风险＝可能性×后果</td></tr>
+    <tr><td>12 教育</td><td>小班≠小校；个人负担转制度责任；制度只有两端缺中间手段；起步时订规则成本最低</td></tr>
+    <tr><td>13 文化</td><td>问题不在金额在结构；把「表现」定义权抢回来；问责与扶持并行；缓冲三件套</td></tr>
+    <tr><td>14 数字</td><td>三重错配；a promise, not proof；联而不集；界线在能否解释</td></tr>
+    <tr><td>15 治理</td><td>一次性买家 vs 重复参与者；量度错位；指标必被扭曲→反向指标；把关者也可能被渗透</td></tr>
+    <tr><td>16 北都</td><td>拆穿假二分；三种不对称；两种时间；酌情必须重新纳入规则</td></tr>
+  </table></div>
+</div>
+
+<footer>
+  来源：jenniferwingna.github.io/exam_pre · 16 议题 64 篇范文（含 16 篇英文 discussion paper） · 整理于 2026-10-26
+</footer>
+
+</div>
+</body>
+</html>
