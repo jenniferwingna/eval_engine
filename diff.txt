@@ -1,81 +1,36 @@
-合理的质疑——legacy 布局的定义注释里明明列了 `<|speak|>` 作为候选，我却说 13041 不用它。让我把两边的代码块挖出来对质：
+好，我按"没有就写不动"和"没有可以先按假设写"分两档列给你。
 
-好，把代码块摆出来。同时我要先修正自己一处不严谨的说法：legacy 布局**默认是带 `<|speak|>` 的**（注释里的候选集没骗人），13041 不用 speak 是因为它走的是 legacy 的一个**消融变体**。三块代码：
+## 必须提供（缺了方案就是空中楼阁）
 
----
+**1. 两路引擎现在的启动方式**
+- vLLM 那路：启动命令/脚本长什么样？是 `python xxx.py --model ...` 这种命令行，还是有 Python 入口函数？有没有现成的配置文件？
+- fast 那路：同样的问题（`inference_streaming_fast.py` 怎么起、吃哪些参数）
+- 这决定路由层是"包一层 subprocess 调用"还是"同进程内 import 分发"，是整个方案的骨架
 
-## 代码块 1：训练侧——“no-speak 消融”变体的定义
+**2. checkpoint 的目录形态**
+- 13041 和 2714 各自的 ckpt 目录文件清单（`tree` 一层就够）
+- 里面有没有训练时留下的 manifest/config 文件（json/yaml/txt 都行，把内容贴出来）
+- 这决定 `detect_format` 能不能做、从哪个字段读
 
-`streaming_reformat/encoded_interleave.py:66-88`：
+**3. 两个训练 run 的配置样本**
+- 13041 和 2714 训练 run 目录里的配置文件，重点是会包含 `DUPLEX_SPEAK_SUPERVISED`、`DUPLEX_IDLE_SUPERVISED`、布局类型、run 名的那些
+- 就是之前说的"补缺口"那份——现在它同时还是路由表设计的依据
 
-```python
-#: No-SPEAK ablation toggle (1h-no-speak). Read once at import from
-#: ``DUPLEX_SPEAK_SUPERVISED`` (default ``1`` = true = emit <|speak|> as normal).
-#: When disabled (``0``), the explicit <|speak|> transition is removed. The
-#: former one-chunk-earlier text shift (collapse LISTEN→SPEAK→TEXT into
-#: LISTEN→TEXT) ...
-#: Used together with ``DUPLEX_IDLE_SUPERVISED=0`` (no <|idle|>) for the
-#: 1h-no-speak cell. ...
-#: _assign_speak_chunks is still gated off entirely under _NO_SPEAK as a belt-
-#: and-suspenders guarantee that no <|speak|> is ever placed.
-_NO_SPEAK: bool = os.environ.get("DUPLEX_SPEAK_SUPERVISED", "1").lower() in (
-    "0", "false", "no", "off", "",
-)
-```
+**4. 谁来调这个路由层**
+- 是评测脚本批量跑？还是起一个服务长期挂着等请求？
+- 调用方喂什么：音频文件路径 / PCM 流 / base64？期望拿回什么：整段文本 / 流式事件 / wav？
+- 这决定统一接口的契约长什么样
 
-**翻译**：这个训练框架有个开关 `DUPLEX_SPEAK_SUPERVISED=0`（叫"1h-no-speak"消融）：关掉后 `<|speak|>` 牌**彻底从语料里移除**（代码里双保险保证“no `<|speak|>` is ever placed”），原本的“听→亮牌→正文”坍缩成“**听→直接正文**”。注释里这个变体叫 **“1h cell”**——对照 13041 的训练 run 名 `1h_li_resp720_intr720`（1h、li=LISTEN+INTERRUPT），命名对上了。
+## 有了更好（没有我就按标注的假设写）
 
-## 代码块 2：引擎侧——vLLM 根本不解析 speak token
+5. **运行环境**：两路引擎能装在同一个 Python 环境里吗（依赖冲不冲突）？机器几张卡、一次只跑一个模型还是要并发？
+6. **vLLM 侧现有的环境变量清单**：除了 `QWEN3_OMNI_EMPTY_ACTION_BLOCK` 还有没有别的开关
+7. **特殊 token 表**（tokenizer 配置里的 special tokens 部分，做兜底识别用）
+8. **冒烟测试现在的跑法**：你们怎么喂输入、怎么看输出（路由层要兼容这个测试流）
+9. **指标要求**：每次跑完要落哪些数（FCL/RTF/文本输出？），落到哪里去
 
-`vllm_omni/experimental/fullduplex/qwen3_omni/runtime.py:411-422`：
+## 交付物
 
-```python
-# v2_listen: when the agent-text decode target is the <|listen|>
-# token (assistant silent this chunk), treat it as a listen decision
-# rather than a speak with empty text. The model is supervised to
-# emit <|listen|> for silent chunks (mim_omni/streaming_reformat).
-listen_id = _special_token_id(sources, "<|listen|>")
-decoded_listen = bool(token_ids) and (
-    token_ids[-1] == listen_id ...
-)
-native_decision = "listen" if decoded_listen else "speak"   # ← 全部逻辑在这一行
-```
+资料齐后我出一份设计方案，包含：架构图（路由层位置）、ckpt 注册表 schema、`detect_format` 的判定优先级逻辑、启动流程与错误处理（错配直接拒绝）、统一 I/O 接口定义、两路指标的可比性标注规则、以及后续接新 ckpt / 切换引擎的操作手册。
 
-**翻译**：引擎判断“模型在不在说话”的全部逻辑就是这一行——**输出是 `<|listen|>` 就算听，不是就算说**。引擎从头到尾没有一行代码去解析 `<|speak|>`（id 151698 在引擎里没有任何 special-case）。“speak”只是个推导出来的状态名，不是 token。
-
-## 代码块 3：引擎侧——为这个 1h 消融专门写的适配
-
-`omni_ar_scheduler.py:414-423`：
-
-```python
-if os.environ.get("QWEN3_OMNI_EMPTY_ACTION_BLOCK", "") == "1":
-    # Empty-action-block checkpoints (e.g. the 1h LISTEN+INTERRUPT
-    # ablation) are trained with <|action_start|><|action_end|> and both
-    # tokens masked (label=-100): the model never samples action content
-    # or <|action_end|> on its own, so free-running stage-1 decoding
-    # emits ~10 structural tokens that corrupt the next chunk's context.
-    # Force the span to close immediately...
-    action_params.allowed_token_ids = [action_end]
-```
-
-**翻译**：引擎里专门有个环境变量伺候“1h LISTEN+INTERRUPT 消融”系的 ckpt——注释直呼其名。vLLM 引擎和 1h 系训练格式是**互相认识**的。
-
----
-
-## 汇总：证据强度声明
-
-| 证据 | 类型 | 强度 |
-|---|---|---|
-| 13041 全量 200 条推理里 `<|speak|>` 出现 **0 次**（listen 5768 / 普通词 5203） | 实测 | 硬 |
-| 引擎判断说话的唯一逻辑是“非 listen 即说”（runtime.py:422），全引擎无一处解析 speak token | 代码 | 硬 |
-| 训练框架存在"1h-no-speak"变体：移除 speak 牌、听→直接正文（interleave:66-88） | 代码 | 硬 |
-| 13041 的 run 名 `1h_li_*` 与代码注释里的 "1h LISTEN+INTERRUPT" 命名吻合 | 佐证 | 间接 |
-| 13041 训练时确实设了 `DUPLEX_SPEAK_SUPERVISED=0` | **未直接验证** | 缺口 |
-
-最后一行是我要诚实标注的：13041 的训练 manifest 在 OBS 的 run 目录里，我没有拉取它的训练配置文件做最终确认——“13041 是 no-speak 变体”是从**代码能力 + 命名对应 + 实测行为**三面夹出来的结论，逻辑闭环但缺一手配置文件。要不要我去拉 13041 的训练 run 配置把这个缺口补上？
-
-<options>
-<option>去拉 13041 训练 run 的配置文件，补上最后缺口</option>
-<option>不用了，现有证据够硬，出终版对比表</option>
-<option>整理成文档存档</option>
-</options>
+前 4 项凑齐就可以开工；5–9 缺的我会用「假设：xxx」标注，你后面拿到真实信息再替换。**最省力的方式是你先把第 1、2 项贴给我**（两条启动命令 + 两个 ckpt 目录清单），我可以先出骨架，其余边补边填。
