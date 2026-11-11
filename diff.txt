@@ -1,0 +1,129 @@
+好，我把两边的实际代码挖出来对照讲。先找 fast 推理里消费 state_then_text 布局的那段：
+
+这段是状态机契约文档，已经透露关键信息（"a SPEAK chunk commits as 'text' carrying the reply's first token"）。再挖 fast 实际生成循环——每拍到底采几个 token：
+
+拿到 fast 侧核心代码。再看主循环里怎么把"两步走"跑起来的：
+
+好，直接上代码对照。一共三段，每段配翻译。
+
+---
+
+## 代码证据 1：fast 是“一拍两步”设计的（2714 的布局）
+
+`inference_streaming_fast.py:962-983`——模型决定“开口说”的那一拍：
+
+```python
+if state_then_text and new_state == "speak":
+    # v2 SPEAK turn point: the committed chunk carries the reply's
+    # FIRST text at the slot's second AR position (same 240 ms
+    # chunk — design §4). Feed the state token back, forward once
+    # more, pick the text
+    stt_seq_ids = all_token_ids + partial_ids + [stt_state_token_id]  # ① 把 <|speak|> 拼回序列尾部
+    logits, hidden = ref.forward_step(...)                            # ② 再跑一次 forward
+    top5 = torch.topk(logits[0, pos + 1, :], 5)
+    emitted_token = pick_text_state_then_text(stt_graph, top5.indices) # ③ 在"下一个位置"采出正文首词
+    new_state = "text"
+```
+
+**翻译**：2714 训练时，一个“开口说”的拍（240ms）输出的是**两个连着的 token**——先 `<|speak|>`（状态），紧接着正文第一个词。fast 的做法：采到 `<|speak|>` 后**把它拼回序列、再 forward 一次**，在下一个位置把词采出来。同一拍，两次采样。说话继续时，后续每拍再接着出词。
+
+## 代码证据 2：vLLM 引擎是“一拍只准 1 个 token”（13041 的布局）
+
+`omni_ar_scheduler.py:400-403`：
+
+```python
+semantic_agent_ids = list(agent_token_ids)
+agent_ended = bool(... == agent_end)
+if agent_ended:
+    semantic_agent_ids.pop()
+if len(semantic_agent_ids) > 1:
+    raise ValueError("Qwen3 duplex agent text exceeds one token per chunk")   # ← 写死的假设
+```
+
+**翻译**：引擎收每一拍的 agent 输出时，检查这段**超过 1 个 token 就直接抛异常**。它根本没有“第二采样位”这个概念——设计上就认为一拍 = 一个 token（要么状态标记，要么一个词）。13041 的训练格式恰好就是这样（`runtime.py:411` 注释原话："The model is supervised to emit `<|listen|>` for silent chunks (mim_omni/streaming_reformat)"——沉默拍出一个 `<|listen|>`，说话拍直接出一个词，一拍一 token）。
+
+## 代码证据 3：两边冒烟实测的对照
+
+| | 13041（vLLM 兼容格式） | 2714（冒烟实测） |
+|---|---|---|
+| 每拍 token 数 | 1（45 拍全是 1） | 1（87 拍全是 1） |
+| 说话拍出什么 | **普通词**，如 `ids=[785]`（="The"） | **状态标记** `<|speak|>` ×55 |
+| 正文产出 | ✅ 完整回答 | ❌ 零个词 |
+
+## 串起来：2714 在 vLLM 里到底发生了什么
+
+1. 某一拍，2714 决定开口 → 按训练习惯，它吐出 `<|speak|>`，**等着在第二个位置出词**
+2. 但引擎一拍只收 1 个 token，收到 `<|speak|>` 就把这拍**封口了**（scheduler 里会强制接上 `<|action_end|><|chunk_eos|>` 两个结构符）
+3. 下一拍，2714 看到的上文是“一个孤零零的 speak、后面没有词”——这种序列在它的训练数据里**从未出现过**，上下文已经错位
+4. 在错位的上下文上，它又吐 `<|speak|>`（v2 状态机里 SPEAK→SPEAK 的含义是“正文继续”，它以为自己还在说）→ 又被封口 → 又吐 → **无限循环**。这就是冒烟里 55 个 speak、0 个词的由来
+
+**一句话**：不是 2714 “坏了”，是 vLLM 每拍只给一次开口机会，而 2714 的说话方式需要一拍两次——fast 给得起这两次，vLLM 的调度器给不起。要改的就是这个（连同封口协议、重放协议），所以叫“引擎级改造”。
+
+<options>
+<option>懂了，出终版对比表</option>
+<option>这个 double-forward 会不会正是 fast 慢的原因之一？</option>
+<option>改引擎支持两步采样，工作量多大？</option>
+</options>
+训练侧权威定义到手（`duplex_timeline_v2.py:54-56` 原文："the reply's first slot is `[SPEAK][text]` — state and text are two AR positions in the SAME chunk"）。再看语料构造的实际代码——训练 label 到底怎么摆：
+
+训练语料构造代码里找到了**两种布局的官方定义**。最后补一块拼图——把 13041 冒烟的完整 agent 序列解出来做实测对照：
+
+证据链齐了——五层证据互相锁死。按“训练格式定义 → 引擎约束 → 实测行为”排给您：
+
+---
+
+## 证据 1：训练语料构造代码的官方定义（最权威）
+
+`streaming_reformat/encoded_interleave.py:336-353`，训练语料怎么构造 agent 槽位，注释原文一字未改：
+
+```
+legacy      — picks exactly ONE of text / <|speak|> / <|text_break|> /
+              <|listen|> / <|idle|> / <|interrupt|> per chunk.     ← 13041 系：一拍恰好 1 个 token
+
+state_then_text — the slot reads [STATE][text? 0..1] — an interaction-state
+              token EVERY chunk (dense supervision), and a text token
+              follows ONLY when state=SPEAK. Two AR positions in one
+              chunk, causal (hidden → predict STATE → feed back →
+              predict text), not parallel.                          ← 2714：一拍 2 个位置 [状态][词]
+```
+
+**这就是根**：两种 ckpt 的训练数据格式不同。13041 系按 legacy 造（一拍一 token），2714 按 state_then_text 造（说话拍 = `[<|speak|>][词]` 两个位置，先出状态、喂回模型、再出词）。
+
+## 证据 2：训练时间线代码再确认
+
+`streaming_reformat/duplex_timeline_v2.py:54-56`：
+
+> "under `state_then_text` the reply's first slot is `[SPEAK][text]` — **state and text are two AR positions in the SAME chunk**."
+
+## 证据 3：vLLM 引擎按 legacy 格式设计（三处硬约束）
+
+- `omni_ar_scheduler.py:403`：agent text 超 1 个 token **直接 raise**（“Qwen3 duplex agent text exceeds one token per chunk”）
+- `runtime.py:411-414` 注释写明引擎的监督假设：“The model is supervised to emit `<|listen|>` for silent chunks (**mim_omni/streaming_reformat**)”——就是 legacy 布局
+- `omni_ar_scheduler.py:458-462`：每拍收完 1 个 token 后强制封口（replay 最后 token + 拼上 `<|action_end|><|chunk_eos|>`），**不存在第二采样位**
+
+## 证据 4：fast 是照 state_then_text 实现的
+
+`inference_streaming_fast.py:962-983`：采到 `<|speak|>` 后“Feed the state token back, **forward once more**, pick the text”——把状态 token 拼回序列、**再 forward 一次**、在下一位置采出正文首词。正是证据 1 里 "predict STATE → feed back → predict text" 的推理端实现。
+
+## 证据 5：两边实测序列并排（同一问题、同一输入）
+
+```
+13041: <|listen|>×21 → "The Earth does move. It rotates on its axis
+        and revolves around the Sun." → <|listen|>×8
+        （listen 后直接出词 = legacy 格式，引擎完美消费）
+
+2714:  <|listen|>×7 → <|interrupt|> → <|listen|>×8 → <|speak|>×25 → <|listen|>...
+        （speak 后还是 speak——第二个位置该出的"词"永远没被采样到）
+```
+
+2714 的状态机其实还在正常转移（listen→interrupt→listen→speak→listen，没有死锁），**唯独文本通道从未打开**——因为引擎每拍只采第一个位置（状态），`[SPEAK][词]` 的“词”永远缺席。
+
+---
+
+**闭环**：训练代码规定 2714 说话拍是两 token（证据 1/2）→ 引擎每拍只收一 token 且无第二采样位（证据 3）→ fast 实现了两步采样所以能跑（证据 4）→ 实测序列精确呈现两种格式的差异（证据 5）。五个证据互相印证，没有推测环节。
+
+<options>
+<option>证据链清楚了，出终版对比表</option>
+<option>再挖一层：13041 训练 run 的配置实证（它确实是 legacy 布局）</option>
+<option>评估改引擎支持两步采样的工作量</option>
+</options>
